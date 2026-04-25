@@ -13,7 +13,7 @@ export default function HomeHeader() {
   });
 
   return (
-    <View style={globalStyles.header}>
+    <View style={globalStyles.headerRow}>
       <Text style={globalStyles.date}>{currentDate}</Text>
       <TouchableOpacity
         accessibilityLabel="Open settings"

@@ -16,7 +16,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[globalStyles.container, globalStyles.screenContent]}>
-      <View style={globalStyles.header}>
+      <View style={globalStyles.headerRow}>
         <TouchableOpacity
           accessibilityLabel="Go back"
           accessibilityRole="button"

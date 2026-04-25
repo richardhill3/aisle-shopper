@@ -2,7 +2,7 @@ import ListItem from "@/components/ListItem";
 import { ShoppingList } from "@/storage/lists";
 import { useTheme } from "@/utils/theme";
 import { router } from "expo-router";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 type RecentListsProps = {
   lists: ShoppingList[];
@@ -12,7 +12,7 @@ export default function RecentLists({ lists }: RecentListsProps) {
   const { globalStyles } = useTheme();
 
   return (
-    <View style={globalStyles.screenContent}>
+    <View style={styles.section}>
       <Text style={globalStyles.sectionTitle}>Recent lists</Text>
       {lists.length === 0 ? (
         <Text style={globalStyles.empty}>No lists yet.</Text>
@@ -40,3 +40,9 @@ export default function RecentLists({ lists }: RecentListsProps) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  section: {
+    gap: 10,
+  },
+});

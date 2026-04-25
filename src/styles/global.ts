@@ -91,6 +91,11 @@ export function createGlobalStyles(themeColors: ColorPalette) {
       color: themeColors.textSecondary,
       fontSize: 14,
     },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
     header: {
       flexDirection: "row",
       alignItems: "center",
