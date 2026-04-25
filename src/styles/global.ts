@@ -86,8 +86,6 @@ export function createGlobalStyles(themeColors: ColorPalette) {
       fontSize: 18,
       fontWeight: "600",
       color: themeColors.textSecondary,
-      marginTop: 30,
-      marginBottom: 16,
     },
     empty: {
       color: themeColors.textSecondary,

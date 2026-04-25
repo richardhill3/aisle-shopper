@@ -31,7 +31,10 @@ export default function HomeScreen() {
   );
 
   return (
-    <ScrollView style={globalStyles.container}>
+    <ScrollView
+      contentContainerStyle={globalStyles.screenContent}
+      style={globalStyles.container}
+    >
       <Text style={globalStyles.title}>Aisle Shopper, the App!</Text>
       <HomeHeader />
       <RecentLists lists={recentLists} />
