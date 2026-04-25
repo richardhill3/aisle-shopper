@@ -17,20 +17,25 @@ export default function RecentLists({ lists }: RecentListsProps) {
       {lists.length === 0 ? (
         <Text style={globalStyles.empty}>No lists yet.</Text>
       ) : (
-        lists.map((list) => (
-          <ListItem
-            key={list.id}
-            name={list.name}
-            itemCount={list.sections.reduce(
-              (count, section) => count + section.items.length,
-              0,
-            )}
-            sectionCount={list.sections.length}
-            onPress={() =>
-              router.push({ pathname: "/lists/[id]", params: { id: list.id } })
-            }
-          />
-        ))
+        <View style={globalStyles.listStack}>
+          {lists.map((list) => (
+            <ListItem
+              key={list.id}
+              name={list.name}
+              itemCount={list.sections.reduce(
+                (count, section) => count + section.items.length,
+                0,
+              )}
+              sectionCount={list.sections.length}
+              onPress={() =>
+                router.push({
+                  pathname: "/lists/[id]",
+                  params: { id: list.id },
+                })
+              }
+            />
+          ))}
+        </View>
       )}
     </View>
   );

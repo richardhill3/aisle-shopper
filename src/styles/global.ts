@@ -70,6 +70,13 @@ export function createGlobalStyles(themeColors: ColorPalette) {
       paddingTop: 60,
       paddingHorizontal: 20,
     },
+    screenContent: {
+      gap: 16,
+      paddingBottom: 40,
+    },
+    listStack: {
+      gap: 10,
+    },
     title: {
       fontSize: 28,
       fontWeight: "bold",

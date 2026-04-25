@@ -35,7 +35,7 @@ export default function CreateListScreen() {
   }
 
   return (
-    <View style={globalStyles.container}>
+    <View style={[globalStyles.container, globalStyles.screenContent]}>
       <Text style={globalStyles.title}>Create List</Text>
       <View style={styles.form}>
         <TextInput
@@ -66,7 +66,6 @@ function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     form: {
       gap: 14,
-      marginTop: 30,
     },
     input: {
       backgroundColor: colors.surface,

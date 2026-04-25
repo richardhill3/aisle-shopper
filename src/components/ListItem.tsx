@@ -39,7 +39,6 @@ function createStyles(colors: ColorPalette) {
     container: {
       backgroundColor: colors.surface,
       borderRadius: 8,
-      marginBottom: 10,
       padding: 16,
     },
     name: {

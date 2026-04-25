@@ -24,6 +24,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   LayoutChangeEvent,
   ScrollView,
   StyleSheet,
@@ -197,6 +198,26 @@ export default function ListDetailScreen() {
     ]);
   }
 
+  const addSectionRow = (
+    <View style={styles.addSectionRow}>
+      <TextInput
+        onChangeText={setNewSectionName}
+        placeholder="Add aisle"
+        placeholderTextColor={colors.textSecondary}
+        style={styles.sectionInput}
+        value={newSectionName}
+      />
+      <TouchableOpacity
+        accessibilityLabel="Add aisle"
+        accessibilityRole="button"
+        onPress={handleAddSection}
+        style={styles.iconButton}
+      >
+        <Ionicons name="add-outline" size={22} color={colors.primary} />
+      </TouchableOpacity>
+    </View>
+  );
+
   if (!list) {
     return (
       <View style={globalStyles.container}>
@@ -214,161 +235,176 @@ export default function ListDetailScreen() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      ref={scrollRef}
-      style={globalStyles.container}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={styles.iconButton}
-        >
-          <Ionicons name="chevron-back-outline" size={22} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          accessibilityLabel="Delete list"
-          accessibilityRole="button"
-          onPress={confirmDeleteList}
-          style={styles.iconButton}
-        >
-          <Ionicons name="trash-outline" size={20} color={colors.alert} />
-        </TouchableOpacity>
-      </View>
-
-      {mode === "edit" ? (
-        <TextInput
-          onBlur={handleRenameList}
-          onChangeText={setListName}
-          placeholder="List name"
-          placeholderTextColor={colors.textSecondary}
-          style={styles.titleInput}
-          value={listName}
-        />
-      ) : (
-        <Text style={globalStyles.title}>{list.name}</Text>
-      )}
-
-      <ListModeToggle mode={mode} onChangeMode={setMode} />
-
-      {mode === "edit" ? (
-        <View style={styles.addSectionRow}>
-          <TextInput
-            onChangeText={setNewSectionName}
-            placeholder="Add aisle"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.sectionInput}
-            value={newSectionName}
-          />
+    <KeyboardAvoidingView behavior="padding" style={styles.container}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.content}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        ref={scrollRef}
+        style={styles.scroller}
+      >
+        <View style={styles.header}>
           <TouchableOpacity
-            accessibilityLabel="Add aisle"
+            accessibilityLabel="Go back"
             accessibilityRole="button"
-            onPress={handleAddSection}
+            onPress={() => router.back()}
             style={styles.iconButton}
           >
-            <Ionicons name="add-outline" size={22} color={colors.primary} />
+            <Ionicons
+              name="chevron-back-outline"
+              size={22}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityLabel="Delete list"
+            accessibilityRole="button"
+            onPress={confirmDeleteList}
+            style={styles.iconButton}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
-      ) : (
-        <TouchableOpacity
-          accessibilityRole="button"
-          onPress={handleResetCheckedItems}
-          style={styles.secondaryButton}
-        >
-          <Ionicons name="refresh-outline" size={18} color={colors.primary} />
-          <Text style={styles.secondaryButtonText}>Reset checked items</Text>
-        </TouchableOpacity>
-      )}
 
-      {visibleSections.length === 0 ? (
-        <Text style={globalStyles.empty}>
-          {mode === "edit"
-            ? "Add an aisle to start building this list."
-            : "No items to shop yet."}
-        </Text>
-      ) : (
-        visibleSections.map((section, index) => {
-          const sectionComplete = isSectionComplete(section);
-          const collapsed =
-            mode === "shop"
-              ? (collapsedSections[section.id] ?? sectionComplete)
-              : false;
+        {mode === "edit" ? (
+          <TextInput
+            onBlur={handleRenameList}
+            onChangeText={setListName}
+            placeholder="List name"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.titleInput}
+            value={listName}
+          />
+        ) : (
+          <Text style={globalStyles.title}>{list.name}</Text>
+        )}
 
-          return (
-            <View
-              key={section.id}
-              onLayout={(event) => handleSectionLayout(section.id, event)}
-            >
-              <ShoppingListSection
-                collapsed={collapsed}
-                mode={mode}
-                onAddItem={async (name) => {
-                  const updatedList = await addItem(list.id, section.id, name);
-                  setList(updatedList);
-                }}
-                onDeleteItem={async (itemId) => {
-                  const updatedList = await deleteItem(
-                    list.id,
-                    section.id,
-                    itemId,
-                  );
-                  setList(updatedList);
-                }}
-                onDeleteSection={async () => {
-                  const updatedList = await deleteSection(list.id, section.id);
-                  setList(updatedList);
-                }}
-                onMoveSection={async (direction) => {
-                  const updatedList = await moveSection(
-                    list.id,
-                    section.id,
-                    direction,
-                  );
-                  setList(updatedList);
-                }}
-                onRenameItem={async (itemId, name) => {
-                  const updatedList = await renameItem(
-                    list.id,
-                    section.id,
-                    itemId,
-                    name,
-                  );
-                  setList(updatedList);
-                }}
-                onRenameSection={async (name) => {
-                  const updatedList = await renameSection(
-                    list.id,
-                    section.id,
-                    name,
-                  );
-                  setList(updatedList);
-                }}
-                onToggleCollapsed={() =>
-                  setCollapsedSections((current) => ({
-                    ...current,
-                    [section.id]: !collapsed,
-                  }))
-                }
-                onToggleItem={(itemId) => handleToggleItem(section.id, itemId)}
-                section={section}
-                sectionCount={visibleSections.length}
-                sectionIndex={index}
-              />
-            </View>
-          );
-        })
-      )}
-    </ScrollView>
+        <ListModeToggle mode={mode} onChangeMode={setMode} />
+
+        {mode === "shop" && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={handleResetCheckedItems}
+            style={styles.secondaryButton}
+          >
+            <Ionicons name="refresh-outline" size={18} color={colors.primary} />
+            <Text style={styles.secondaryButtonText}>Reset checked items</Text>
+          </TouchableOpacity>
+        )}
+
+        {visibleSections.length === 0 ? (
+          <>
+            {mode === "edit" && addSectionRow}
+            <Text style={globalStyles.empty}>
+              {mode === "edit"
+                ? "Add an aisle to start building this list."
+                : "No items to shop yet."}
+            </Text>
+          </>
+        ) : (
+          <>
+            {visibleSections.map((section, index) => {
+              const sectionComplete = isSectionComplete(section);
+              const collapsed =
+                mode === "shop"
+                  ? (collapsedSections[section.id] ?? sectionComplete)
+                  : false;
+
+              return (
+                <View
+                  key={section.id}
+                  onLayout={(event) => handleSectionLayout(section.id, event)}
+                >
+                  <ShoppingListSection
+                    collapsed={collapsed}
+                    mode={mode}
+                    onAddItem={async (name) => {
+                      const updatedList = await addItem(
+                        list.id,
+                        section.id,
+                        name,
+                      );
+                      setList(updatedList);
+                    }}
+                    onDeleteItem={async (itemId) => {
+                      const updatedList = await deleteItem(
+                        list.id,
+                        section.id,
+                        itemId,
+                      );
+                      setList(updatedList);
+                    }}
+                    onDeleteSection={async () => {
+                      const updatedList = await deleteSection(
+                        list.id,
+                        section.id,
+                      );
+                      setList(updatedList);
+                    }}
+                    onMoveSection={async (direction) => {
+                      const updatedList = await moveSection(
+                        list.id,
+                        section.id,
+                        direction,
+                      );
+                      setList(updatedList);
+                    }}
+                    onRenameItem={async (itemId, name) => {
+                      const updatedList = await renameItem(
+                        list.id,
+                        section.id,
+                        itemId,
+                        name,
+                      );
+                      setList(updatedList);
+                    }}
+                    onRenameSection={async (name) => {
+                      const updatedList = await renameSection(
+                        list.id,
+                        section.id,
+                        name,
+                      );
+                      setList(updatedList);
+                    }}
+                    onToggleCollapsed={() =>
+                      setCollapsedSections((current) => ({
+                        ...current,
+                        [section.id]: !collapsed,
+                      }))
+                    }
+                    onToggleItem={(itemId) =>
+                      handleToggleItem(section.id, itemId)
+                    }
+                    section={section}
+                    sectionCount={visibleSections.length}
+                    sectionIndex={index}
+                  />
+                </View>
+              );
+            })}
+            {mode === "edit" && addSectionRow}
+          </>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
+    container: {
+      backgroundColor: colors.background,
+      flex: 1,
+    },
+    scroller: {
+      flex: 1,
+    },
     content: {
       gap: 16,
-      paddingBottom: 40,
+      paddingHorizontal: 20,
+      paddingBottom: 180,
+      paddingTop: 60,
     },
     header: {
       flexDirection: "row",

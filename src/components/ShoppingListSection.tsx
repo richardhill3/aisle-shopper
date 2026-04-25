@@ -72,7 +72,6 @@ export default function ShoppingListSection({
     const trimmedName = newItemName.trim();
 
     if (!trimmedName) {
-      Alert.alert("Item required", "Enter an item name before adding it.");
       return;
     }
 
@@ -163,16 +162,13 @@ export default function ShoppingListSection({
           {mode === "edit" && (
             <View style={styles.addItemRow}>
               <TextInput
+                onBlur={handleAddItem}
                 onChangeText={setNewItemName}
+                onSubmitEditing={handleAddItem}
                 placeholder="Add item"
                 placeholderTextColor={colors.textSecondary}
                 style={styles.itemInput}
                 value={newItemName}
-              />
-              <IconButton
-                icon="add-outline"
-                label="Add item"
-                onPress={handleAddItem}
               />
             </View>
           )}
@@ -246,7 +242,12 @@ function ShoppingListItemRow({
   }
 
   return (
-    <View style={styles.itemRow}>
+    <TouchableOpacity
+      accessibilityHint="Long press to delete this item"
+      activeOpacity={1}
+      onLongPress={confirmDeleteItem}
+      style={styles.itemRow}
+    >
       <TextInput
         onBlur={handleItemBlur}
         onChangeText={setItemName}
@@ -255,13 +256,7 @@ function ShoppingListItemRow({
         style={styles.itemInput}
         value={itemName}
       />
-      <IconButton
-        destructive
-        icon="trash-outline"
-        label="Delete item"
-        onPress={confirmDeleteItem}
-      />
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -282,7 +277,7 @@ function IconButton({
 }: IconButtonProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const color = destructive ? colors.alert : colors.textSecondary;
+  const color = destructive ? colors.primary : colors.textSecondary;
 
   return (
     <TouchableOpacity
