@@ -1,3 +1,5 @@
+import { ColorPalette } from "@/styles/global";
+import { useTheme } from "@/utils/theme";
 import { StyleSheet, Text, View } from "react-native";
 
 type ListItemProps = {
@@ -6,6 +8,9 @@ type ListItemProps = {
 };
 
 export default function ListItem({ name, itemCount }: ListItemProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.name}>{name}</Text>
@@ -14,21 +19,23 @@ export default function ListItem({ name, itemCount }: ListItemProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#16213e",
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 10,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ffffff",
-  },
-  details: {
-    fontSize: 13,
-    color: "#a0a0b0",
-    marginTop: 4,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 10,
+    },
+    name: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    details: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+  });
+}
