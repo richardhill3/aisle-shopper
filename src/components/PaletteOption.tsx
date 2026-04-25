@@ -56,7 +56,6 @@ function createStyles(colors: ColorPalette) {
       borderWidth: 1,
       flexDirection: "row",
       justifyContent: "space-between",
-      marginBottom: 12,
       padding: 16,
     },
     details: {

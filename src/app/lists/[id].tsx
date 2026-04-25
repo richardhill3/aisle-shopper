@@ -238,7 +238,7 @@ export default function ListDetailScreen() {
     <KeyboardAvoidingView behavior="padding" style={styles.container}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={styles.detailContent}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         ref={scrollRef}
@@ -400,7 +400,7 @@ function createStyles(colors: ColorPalette) {
     scroller: {
       flex: 1,
     },
-    content: {
+    detailContent: {
       gap: 16,
       paddingHorizontal: 20,
       paddingBottom: 180,

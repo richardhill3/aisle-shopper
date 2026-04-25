@@ -1,5 +1,5 @@
 import PaletteOption from "@/components/PaletteOption";
-import { paletteLabels, palettes, ColorPaletteKey } from "@/styles/global";
+import { ColorPaletteKey, paletteLabels, palettes } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -15,8 +15,8 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={globalStyles.container}>
-      <View style={styles.header}>
+    <View style={[globalStyles.container, globalStyles.screenContent]}>
+      <View style={globalStyles.header}>
         <TouchableOpacity
           accessibilityLabel="Go back"
           accessibilityRole="button"
@@ -29,27 +29,24 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={globalStyles.sectionTitle}>Color palette</Text>
-      {Object.entries(palettes).map(([paletteKey, palette]) => (
-        <PaletteOption
-          key={paletteKey}
-          label={paletteLabels[paletteKey as ColorPaletteKey]}
-          palette={palette}
-          paletteKey={paletteKey as ColorPaletteKey}
-          selected={selectedPaletteKey === paletteKey}
-          onPress={handleSelectPalette}
-        />
-      ))}
+      <View style={globalStyles.listStack}>
+        {Object.entries(palettes).map(([paletteKey, palette]) => (
+          <PaletteOption
+            key={paletteKey}
+            label={paletteLabels[paletteKey as ColorPaletteKey]}
+            palette={palette}
+            paletteKey={paletteKey as ColorPaletteKey}
+            selected={selectedPaletteKey === paletteKey}
+            onPress={handleSelectPalette}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 function createStyles(colors: (typeof palettes)[ColorPaletteKey]) {
   return StyleSheet.create({
-    header: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 12,
-    },
     iconButton: {
       alignItems: "center",
       backgroundColor: colors.surface,
