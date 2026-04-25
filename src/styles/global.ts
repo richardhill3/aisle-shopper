@@ -67,11 +67,10 @@ export function createGlobalStyles(themeColors: ColorPalette) {
     container: {
       flex: 1,
       backgroundColor: themeColors.background,
-      paddingTop: 60,
-      paddingHorizontal: 20,
     },
     screenContent: {
       gap: 16,
+      paddingHorizontal: 20,
       paddingBottom: 40,
     },
     listStack: {
@@ -95,13 +94,6 @@ export function createGlobalStyles(themeColors: ColorPalette) {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
-    },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      marginTop: 4,
-      marginBottom: 30,
     },
     date: {
       fontSize: 14,

@@ -10,11 +10,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CreateListScreen() {
   const { colors, globalStyles } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
   const [name, setName] = useState("");
 
@@ -35,7 +38,18 @@ export default function CreateListScreen() {
   }
 
   return (
-    <View style={[globalStyles.container, globalStyles.screenContent]}>
+    <ScrollView
+      contentContainerStyle={[
+        globalStyles.screenContent,
+        {
+          paddingBottom: insets.bottom + 40,
+          paddingTop: insets.top + 20,
+        },
+      ]}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+      style={globalStyles.container}
+    >
       <Text style={globalStyles.title}>Create List</Text>
       <View style={styles.form}>
         <TextInput
@@ -58,7 +72,7 @@ export default function CreateListScreen() {
           <Text style={styles.buttonText}>Create list</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 

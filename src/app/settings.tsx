@@ -3,11 +3,19 @@ import { ColorPaletteKey, paletteLabels, palettes } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const { colors, globalStyles, selectedPaletteKey, setSelectedPaletteKey } =
     useTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
   async function handleSelectPalette(paletteKey: ColorPaletteKey) {
@@ -15,7 +23,17 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={[globalStyles.container, globalStyles.screenContent]}>
+    <ScrollView
+      contentContainerStyle={[
+        globalStyles.screenContent,
+        {
+          paddingBottom: insets.bottom + 40,
+          paddingTop: insets.top + 20,
+        },
+      ]}
+      contentInsetAdjustmentBehavior="automatic"
+      style={globalStyles.container}
+    >
       <View style={globalStyles.headerRow}>
         <TouchableOpacity
           accessibilityLabel="Go back"
@@ -41,7 +59,7 @@ export default function SettingsScreen() {
           />
         ))}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 

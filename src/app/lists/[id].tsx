@@ -33,10 +33,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, globalStyles } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
   const scrollRef = useRef<ScrollView>(null);
   const sectionPositions = useRef<Record<string, number>>({});
@@ -220,7 +222,17 @@ export default function ListDetailScreen() {
 
   if (!list) {
     return (
-      <View style={globalStyles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          globalStyles.screenContent,
+          {
+            paddingBottom: insets.bottom + 40,
+            paddingTop: insets.top + 20,
+          },
+        ]}
+        contentInsetAdjustmentBehavior="automatic"
+        style={globalStyles.container}
+      >
         <Text style={globalStyles.title}>List not found</Text>
         <TouchableOpacity
           accessibilityRole="button"
@@ -230,7 +242,7 @@ export default function ListDetailScreen() {
           <Ionicons name="home-outline" size={20} color={colors.background} />
           <Text style={styles.primaryButtonText}>Go home</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -238,7 +250,13 @@ export default function ListDetailScreen() {
     <KeyboardAvoidingView behavior="padding" style={styles.container}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.detailContent}
+        contentContainerStyle={[
+          styles.detailContent,
+          {
+            paddingBottom: insets.bottom + 180,
+            paddingTop: insets.top + 20,
+          },
+        ]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         ref={scrollRef}
@@ -403,8 +421,6 @@ function createStyles(colors: ColorPalette) {
     detailContent: {
       gap: 16,
       paddingHorizontal: 20,
-      paddingBottom: 180,
-      paddingTop: 60,
     },
     header: {
       flexDirection: "row",

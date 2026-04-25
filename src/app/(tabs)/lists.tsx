@@ -5,9 +5,11 @@ import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ListsScreen() {
   const { globalStyles } = useTheme();
+  const insets = useSafeAreaInsets();
   const [lists, setLists] = useState<ShoppingList[]>([]);
 
   useFocusEffect(
@@ -32,7 +34,14 @@ export default function ListsScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={globalStyles.screenContent}
+      contentContainerStyle={[
+        globalStyles.screenContent,
+        {
+          paddingBottom: insets.bottom + 40,
+          paddingTop: insets.top + 20,
+        },
+      ]}
+      contentInsetAdjustmentBehavior="automatic"
       style={globalStyles.container}
     >
       <Text style={globalStyles.title}>All Lists</Text>
