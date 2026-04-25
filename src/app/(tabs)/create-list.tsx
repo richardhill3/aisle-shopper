@@ -1,7 +1,7 @@
 import { createList } from "@/storage/lists";
 import { ColorPalette } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {

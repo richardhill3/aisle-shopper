@@ -1,7 +1,7 @@
 import { ShoppingItem, ShoppingSection } from "@/storage/lists";
 import { ColorPalette } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -242,21 +242,20 @@ function ShoppingListItemRow({
   }
 
   return (
-    <TouchableOpacity
-      accessibilityHint="Long press to delete this item"
-      activeOpacity={1}
-      onLongPress={confirmDeleteItem}
-      style={styles.itemRow}
-    >
+    <View style={styles.itemRow}>
       <TextInput
         onBlur={handleItemBlur}
         onChangeText={setItemName}
-        placeholder="Item name"
-        placeholderTextColor={colors.textSecondary}
         style={styles.itemInput}
         value={itemName}
       />
-    </TouchableOpacity>
+      <IconButton
+        destructive
+        icon="trash-outline"
+        label="Delete item"
+        onPress={confirmDeleteItem}
+      />
+    </View>
   );
 }
 

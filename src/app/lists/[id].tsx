@@ -18,7 +18,7 @@ import {
 } from "@/storage/lists";
 import { ColorPalette } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
