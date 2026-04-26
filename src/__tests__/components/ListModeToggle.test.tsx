@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import ListModeToggle from "./ListModeToggle";
+import ListModeToggle from "../../components/ListModeToggle";
 
 describe("ListModeToggle", () => {
   it("selects edit and shop modes", () => {

@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react-native";
-import ListsScreen from "./(tabs)/lists";
 import { getLists } from "@/storage/lists";
+import { render, screen, waitFor } from "@testing-library/react-native";
+import ListsScreen from "../../app/(tabs)/lists";
 
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: (callback: () => void | (() => void)) => callback(),

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { HttpError, formatError, invalidRequest, notFound } from "./errors";
+import { HttpError, formatError, invalidRequest, notFound } from "../src/errors";
 import {
   booleanValue,
   direction,
   optionalName,
   paging,
   requiredName,
-} from "./validation";
+} from "../src/validation";
 
 describe("validation helpers", () => {
   it("trims required and optional names", () => {
