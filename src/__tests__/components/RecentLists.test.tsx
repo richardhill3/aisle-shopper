@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 import type { ShoppingList } from "@/storage/lists";
-import RecentLists from "./RecentLists";
+import RecentLists from "../../components/RecentLists";
 
 jest.mock("expo-router", () => ({
   router: {

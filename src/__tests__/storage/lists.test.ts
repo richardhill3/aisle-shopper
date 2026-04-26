@@ -15,7 +15,7 @@ import {
   resetCheckedItems,
   toggleItemChecked,
   updateList,
-} from "./lists";
+} from "../../storage/lists";
 import { ApiClientError, apiRequest } from "@/utils/api";
 
 jest.mock("@/utils/api", () => {
