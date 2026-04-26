@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { createList } from "@/storage/lists";
 import {
   fireEvent,
   render,
@@ -6,8 +6,8 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 import { router } from "expo-router";
-import CreateListScreen from "./(tabs)/create-list";
-import { createList } from "@/storage/lists";
+import { Alert } from "react-native";
+import CreateListScreen from "../../app/(tabs)/create-list";
 
 jest.mock("expo-router", () => ({
   router: {

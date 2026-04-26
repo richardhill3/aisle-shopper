@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createApp } from "./app";
-import { pool } from "./db";
+import { createApp } from "../src/app";
+import { pool } from "../src/db";
 
 const app = createApp();
 

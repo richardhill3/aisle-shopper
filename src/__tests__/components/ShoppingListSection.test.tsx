@@ -1,7 +1,7 @@
 import { Alert } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { ShoppingSection } from "@/storage/lists";
-import ShoppingListSection from "./ShoppingListSection";
+import ShoppingListSection from "../../components/ShoppingListSection";
 
 const section: ShoppingSection = {
   createdAt: "2026-01-01T00:00:00.000Z",

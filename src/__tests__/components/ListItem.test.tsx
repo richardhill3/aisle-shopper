@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import ListItem from "./ListItem";
+import ListItem from "../../components/ListItem";
 
 describe("ListItem", () => {
   it("renders list details and handles presses", () => {
