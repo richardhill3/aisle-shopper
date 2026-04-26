@@ -1,102 +1,38 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { ListResponse, ListsResponse, ShoppingList } from "@shared";
+import { ApiClientError, apiRequest } from "@/utils/api";
 
-const listsKey = "aisle-shopper:lists";
-
-export type ShoppingItem = {
-  id: string;
-  name: string;
-  checked: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ShoppingSection = {
-  id: string;
-  name: string;
-  items: ShoppingItem[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ShoppingList = {
-  id: string;
-  name: string;
-  sections: ShoppingSection[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-async function readLists(): Promise<ShoppingList[]> {
-  const value = await AsyncStorage.getItem(listsKey);
-
-  if (!value) {
-    return [];
-  }
-
-  try {
-    const lists = JSON.parse(value);
-
-    if (Array.isArray(lists)) {
-      return lists as ShoppingList[];
-    }
-  } catch {
-    return [];
-  }
-
-  return [];
-}
-
-async function writeLists(lists: ShoppingList[]): Promise<void> {
-  await AsyncStorage.setItem(listsKey, JSON.stringify(lists));
-}
-
-async function updateLists(
-  updater: (lists: ShoppingList[]) => ShoppingList[],
-): Promise<ShoppingList[]> {
-  const lists = await readLists();
-  const updatedLists = updater(lists);
-  await writeLists(updatedLists);
-  return updatedLists;
-}
-
-function sortByUpdatedAt(lists: ShoppingList[]) {
-  return [...lists].sort(
-    (first, second) =>
-      new Date(second.updatedAt).getTime() -
-      new Date(first.updatedAt).getTime(),
-  );
-}
+export type { ShoppingItem, ShoppingList, ShoppingSection } from "@shared";
 
 export async function getLists(): Promise<ShoppingList[]> {
-  return sortByUpdatedAt(await readLists());
+  const { lists } = await apiRequest<ListsResponse>("/lists");
+  return Promise.all(lists.map((list) => getRequiredList(list.id)));
 }
 
 export async function getRecentLists(limit = 3): Promise<ShoppingList[]> {
-  const lists = await getLists();
-  return lists.slice(0, limit);
+  const { lists } = await apiRequest<ListsResponse>(
+    `/lists/recent?limit=${limit}`,
+  );
+  return Promise.all(lists.map((list) => getRequiredList(list.id)));
 }
 
 export async function getList(id: string): Promise<ShoppingList | null> {
-  const lists = await readLists();
-  return lists.find((list) => list.id === id) ?? null;
+  try {
+    const { list } = await apiRequest<ListResponse>(`/lists/${id}`);
+    return list;
+  } catch (error) {
+    if (error instanceof ApiClientError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function createList(name: string): Promise<ShoppingList> {
-  const now = new Date().toISOString();
-  const list: ShoppingList = {
-    id: createId("list"),
-    name,
-    sections: [],
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await updateLists((lists) => [list, ...lists]);
-
+  const { list } = await apiRequest<ListResponse>("/lists", {
+    body: JSON.stringify({ name }),
+    method: "POST",
+  });
   return list;
 }
 
@@ -104,49 +40,28 @@ export async function updateList(
   id: string,
   updates: Pick<ShoppingList, "name">,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-  let updatedList: ShoppingList | null = null;
-
-  await updateLists((lists) =>
-    lists.map((list) => {
-      if (list.id !== id) {
-        return list;
-      }
-
-      updatedList = {
-        ...list,
-        ...updates,
-        updatedAt: now,
-      };
-
-      return updatedList;
-    }),
-  );
-
-  return updatedList;
+  const { list } = await apiRequest<ListResponse>(`/lists/${id}`, {
+    body: JSON.stringify(updates),
+    method: "PATCH",
+  });
+  return list;
 }
 
 export async function deleteList(id: string): Promise<void> {
-  await updateLists((lists) => lists.filter((list) => list.id !== id));
+  await apiRequest<void>(`/lists/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export async function addSection(
   listId: string,
   name: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-  const section: ShoppingSection = {
-    id: createId("section"),
-    name,
-    items: [],
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: [...list.sections, section],
-  }));
+  const { list } = await apiRequest<ListResponse>(`/lists/${listId}/sections`, {
+    body: JSON.stringify({ name }),
+    method: "POST",
+  });
+  return list;
 }
 
 export async function renameSection(
@@ -154,24 +69,27 @@ export async function renameSection(
   sectionId: string,
   name: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.map((section) =>
-      section.id === sectionId ? { ...section, name, updatedAt: now } : section,
-    ),
-  }));
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}`,
+    {
+      body: JSON.stringify({ name }),
+      method: "PATCH",
+    },
+  );
+  return list;
 }
 
 export async function deleteSection(
   listId: string,
   sectionId: string,
 ): Promise<ShoppingList | null> {
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.filter((section) => section.id !== sectionId),
-  }));
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}`,
+    {
+      method: "DELETE",
+    },
+  );
+  return list;
 }
 
 export async function moveSection(
@@ -179,29 +97,14 @@ export async function moveSection(
   sectionId: string,
   direction: "up" | "down",
 ): Promise<ShoppingList | null> {
-  return updateStoredList(listId, (list) => {
-    const currentIndex = list.sections.findIndex(
-      (section) => section.id === sectionId,
-    );
-    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-    if (
-      currentIndex < 0 ||
-      nextIndex < 0 ||
-      nextIndex >= list.sections.length
-    ) {
-      return list;
-    }
-
-    const sections = [...list.sections];
-    const [section] = sections.splice(currentIndex, 1);
-    sections.splice(nextIndex, 0, section);
-
-    return {
-      ...list,
-      sections,
-    };
-  });
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}/position`,
+    {
+      body: JSON.stringify({ direction }),
+      method: "PATCH",
+    },
+  );
+  return list;
 }
 
 export async function addItem(
@@ -209,27 +112,14 @@ export async function addItem(
   sectionId: string,
   name: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-  const item: ShoppingItem = {
-    id: createId("item"),
-    name,
-    checked: false,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.map((section) =>
-      section.id === sectionId
-        ? {
-            ...section,
-            items: [...section.items, item],
-            updatedAt: now,
-          }
-        : section,
-    ),
-  }));
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}/items`,
+    {
+      body: JSON.stringify({ name }),
+      method: "POST",
+    },
+  );
+  return list;
 }
 
 export async function renameItem(
@@ -238,22 +128,14 @@ export async function renameItem(
   itemId: string,
   name: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.map((section) =>
-      section.id === sectionId
-        ? {
-            ...section,
-            items: section.items.map((item) =>
-              item.id === itemId ? { ...item, name, updatedAt: now } : item,
-            ),
-            updatedAt: now,
-          }
-        : section,
-    ),
-  }));
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}/items/${itemId}`,
+    {
+      body: JSON.stringify({ name }),
+      method: "PATCH",
+    },
+  );
+  return list;
 }
 
 export async function deleteItem(
@@ -261,20 +143,13 @@ export async function deleteItem(
   sectionId: string,
   itemId: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.map((section) =>
-      section.id === sectionId
-        ? {
-            ...section,
-            items: section.items.filter((item) => item.id !== itemId),
-            updatedAt: now,
-          }
-        : section,
-    ),
-  }));
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}/items/${itemId}`,
+    {
+      method: "DELETE",
+    },
+  );
+  return list;
 }
 
 export async function toggleItemChecked(
@@ -282,66 +157,44 @@ export async function toggleItemChecked(
   sectionId: string,
   itemId: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
+  const currentList = await getRequiredList(listId);
+  const section = currentList.sections.find(
+    (candidate) => candidate.id === sectionId,
+  );
+  const item = section?.items.find((candidate) => candidate.id === itemId);
 
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.map((section) =>
-      section.id === sectionId
-        ? {
-            ...section,
-            items: section.items.map((item) =>
-              item.id === itemId
-                ? { ...item, checked: !item.checked, updatedAt: now }
-                : item,
-            ),
-            updatedAt: now,
-          }
-        : section,
-    ),
-  }));
+  if (!item) {
+    return null;
+  }
+
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/sections/${sectionId}/items/${itemId}`,
+    {
+      body: JSON.stringify({ checked: !item.checked }),
+      method: "PATCH",
+    },
+  );
+  return list;
 }
 
 export async function resetCheckedItems(
   listId: string,
 ): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-
-  return updateStoredList(listId, (list) => ({
-    ...list,
-    sections: list.sections.map((section) => ({
-      ...section,
-      items: section.items.map((item) => ({
-        ...item,
-        checked: false,
-        updatedAt: now,
-      })),
-      updatedAt: now,
-    })),
-  }));
+  const { list } = await apiRequest<ListResponse>(
+    `/lists/${listId}/items/reset-checked`,
+    {
+      method: "POST",
+    },
+  );
+  return list;
 }
 
-async function updateStoredList(
-  listId: string,
-  updater: (list: ShoppingList) => ShoppingList,
-): Promise<ShoppingList | null> {
-  const now = new Date().toISOString();
-  let updatedList: ShoppingList | null = null;
+async function getRequiredList(id: string): Promise<ShoppingList> {
+  const list = await getList(id);
 
-  await updateLists((lists) =>
-    lists.map((list) => {
-      if (list.id !== listId) {
-        return list;
-      }
+  if (!list) {
+    throw new Error("List not found.");
+  }
 
-      updatedList = {
-        ...updater(list),
-        updatedAt: now,
-      };
-
-      return updatedList;
-    }),
-  );
-
-  return updatedList;
+  return list;
 }
