@@ -55,3 +55,17 @@ export function paging(value: unknown, fallback: number, max: number) {
 
   return Math.min(parsed, max);
 }
+
+export function requiredEmail(value: unknown) {
+  if (typeof value !== "string") {
+    throw invalidRequest("Email is required.");
+  }
+
+  const email = value.trim().toLowerCase();
+
+  if (!email) {
+    throw invalidRequest("Email cannot be empty.");
+  }
+
+  return email;
+}

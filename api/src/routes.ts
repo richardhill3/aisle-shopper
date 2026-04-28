@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type {
+  AddListMemberRequest,
   CreateItemRequest,
   CreateListRequest,
   CreateSectionRequest,
@@ -11,14 +12,17 @@ import type {
 } from "../../shared/src";
 import {
   addItem,
+  addListMember,
   addSection,
   createList,
   deleteItem,
   deleteList,
   deleteSection,
   getList,
+  listMembers,
   listSummaries,
   moveSection,
+  removeListMember,
   resetCheckedItems,
   updateItem,
   updateList,
@@ -34,6 +38,7 @@ import {
   direction,
   optionalName,
   paging,
+  requiredEmail,
   requiredName,
 } from "./validation";
 
@@ -105,6 +110,47 @@ apiRouter.post("/lists", async (request, response, next) => {
     next(error);
   }
 });
+
+apiRouter.get("/lists/:listId/members", async (request, response, next) => {
+  try {
+    response.json({
+      members: await listMembers(request.params.listId, request.currentProfile),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+apiRouter.post("/lists/:listId/members", async (request, response, next) => {
+  try {
+    const body = request.body as Partial<AddListMemberRequest>;
+    response.status(201).json({
+      member: await addListMember(
+        request.params.listId,
+        requiredEmail(body.email),
+        request.currentProfile,
+      ),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+apiRouter.delete(
+  "/lists/:listId/members/:profileId",
+  async (request, response, next) => {
+    try {
+      await removeListMember(
+        request.params.listId,
+        request.params.profileId,
+        request.currentProfile,
+      );
+      response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 apiRouter.get("/lists/:listId", async (request, response, next) => {
   try {

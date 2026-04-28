@@ -516,6 +516,207 @@ describe("shopping list API", () => {
     await request(app).get("/api/v1/me").expect(401);
     await request(app).patch("/api/v1/me").expect(401);
   });
+
+  it("lets owners add, list, and remove collaborators by email", async () => {
+    const owner = authHeaders("share-owner", "owner@example.com");
+    const collaborator = authHeaders(
+      "share-collaborator",
+      "Collaborator@Example.com",
+      "Collab User",
+    );
+
+    await getProfileId(collaborator);
+    const created = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared groceries" })
+      .expect(201);
+    const listId = created.body.list.id as string;
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.members).toEqual([]);
+      });
+
+    const added = await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: " collaborator@example.com " })
+      .expect(201);
+
+    expect(added.body.member).toMatchObject({
+      email: "collaborator@example.com",
+      displayName: "Collab User",
+    });
+    expect(added.body.member.id).toEqual(expect.any(String));
+    expect(added.body.member.createdAt).toEqual(expect.any(String));
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.members).toMatchObject([
+          {
+            email: "collaborator@example.com",
+            id: added.body.member.id,
+          },
+        ]);
+      });
+
+    await request(app)
+      .delete(`/api/v1/lists/${listId}/members/${added.body.member.id}`)
+      .set(owner)
+      .expect(204);
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.members).toEqual([]);
+      });
+  });
+
+  it("rejects invalid collaborator management requests", async () => {
+    const owner = authHeaders("share-owner", "owner@example.com");
+    const collaborator = authHeaders("share-collab", "collab@example.com");
+    const extra = authHeaders("share-extra", "extra@example.com");
+
+    await getProfileId(collaborator);
+    await getProfileId(extra);
+    const created = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared groceries" })
+      .expect(201);
+    const listId = created.body.list.id as string;
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: "missing@example.com" })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.error.message).toBe("Profile not found.");
+      });
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: "owner@example.com" })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.error.message).toBe(
+          "Owner cannot be added as a collaborator.",
+        );
+      });
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: "collab@example.com" })
+      .expect(201);
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: "collab@example.com" })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.error.message).toBe(
+          "Profile is already a collaborator.",
+        );
+      });
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: "" })
+      .expect(400);
+  });
+
+  it("limits lists to five collaborators", async () => {
+    const owner = authHeaders("share-owner", "owner@example.com");
+    const created = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared groceries" })
+      .expect(201);
+    const listId = created.body.list.id as string;
+
+    for (let index = 1; index <= 5; index += 1) {
+      const email = `collab-${index}@example.com`;
+      await getProfileId(authHeaders(`share-collab-${index}`, email));
+      await request(app)
+        .post(`/api/v1/lists/${listId}/members`)
+        .set(owner)
+        .send({ email })
+        .expect(201);
+    }
+
+    await getProfileId(authHeaders("share-collab-6", "collab-6@example.com"));
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(owner)
+      .send({ email: "collab-6@example.com" })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.error.message).toBe(
+          "Lists can have at most 5 collaborators.",
+        );
+      });
+  });
+
+  it("requires owner access to manage collaborators", async () => {
+    const owner = authHeaders("share-owner", "owner@example.com");
+    const collaborator = authHeaders("share-collab", "collab@example.com");
+    const unrelated = authHeaders("share-other", "other@example.com");
+    const target = authHeaders("share-target", "target@example.com");
+
+    const targetProfileId = await getProfileId(target);
+    const collaboratorProfileId = await getProfileId(collaborator);
+    const created = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared groceries" })
+      .expect(201);
+    const listId = created.body.list.id as string;
+    await addMembership(listId, collaboratorProfileId);
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}/members`)
+      .set(collaborator)
+      .expect(403);
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(collaborator)
+      .send({ email: "target@example.com" })
+      .expect(403);
+    await request(app)
+      .delete(`/api/v1/lists/${listId}/members/${targetProfileId}`)
+      .set(collaborator)
+      .expect(403);
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}/members`)
+      .set(unrelated)
+      .expect(403);
+    await request(app)
+      .post(`/api/v1/lists/${listId}/members`)
+      .set(unrelated)
+      .send({ email: "target@example.com" })
+      .expect(403);
+    await request(app)
+      .delete(`/api/v1/lists/${listId}/members/${targetProfileId}`)
+      .set(unrelated)
+      .expect(403);
+
+    await request(app).get(`/api/v1/lists/${listId}/members`).expect(401);
+  });
 });
 
 function authHeaders(userId: string, email: string, displayName?: string) {

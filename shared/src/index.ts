@@ -44,6 +44,13 @@ export type Profile = {
   updatedAt: string;
 };
 
+export type ListMember = {
+  id: string;
+  email: string;
+  displayName: string | null;
+  createdAt: string;
+};
+
 export type ApiErrorCode =
   | "invalid_request"
   | "not_found"
@@ -68,6 +75,14 @@ export type ListResponse = {
 
 export type ProfileResponse = {
   profile: Profile;
+};
+
+export type ListMembersResponse = {
+  members: ListMember[];
+};
+
+export type ListMemberResponse = {
+  member: ListMember;
 };
 
 export type CreateListRequest = {
@@ -101,4 +116,8 @@ export type UpdateItemRequest = {
 
 export type UpdateProfileRequest = {
   displayName: string | null;
+};
+
+export type AddListMemberRequest = {
+  email: string;
 };
