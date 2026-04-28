@@ -349,13 +349,73 @@ describe("shopping list API", () => {
       .set(userB)
       .expect(404);
   });
+
+  it("fetches and updates the current authenticated profile", async () => {
+    const user = authHeaders(
+      "profile-user",
+      "Profile.User@Example.com",
+      "Initial Name",
+    );
+
+    await request(app)
+      .get("/api/v1/me")
+      .set(user)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.profile).toMatchObject({
+          displayName: "Initial Name",
+          email: "profile.user@example.com",
+          supabaseUserId: "profile-user",
+        });
+        expect(response.body.profile.id).toEqual(expect.any(String));
+        expect(response.body.profile.createdAt).toEqual(expect.any(String));
+        expect(response.body.profile.updatedAt).toEqual(expect.any(String));
+        expect(response.body.profile.password).toBeUndefined();
+      });
+
+    await request(app)
+      .patch("/api/v1/me")
+      .set(user)
+      .send({ displayName: "  Updated Name  " })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.profile).toMatchObject({
+          displayName: "Updated Name",
+          email: "profile.user@example.com",
+          supabaseUserId: "profile-user",
+        });
+      });
+
+    await request(app)
+      .get("/api/v1/me")
+      .set(authHeaders("profile-user", "PROFILE.USER@EXAMPLE.COM"))
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.profile).toMatchObject({
+          displayName: "Updated Name",
+          email: "profile.user@example.com",
+          supabaseUserId: "profile-user",
+        });
+      });
+  });
+
+  it("rejects unauthenticated profile requests", async () => {
+    await request(app).get("/api/v1/me").expect(401);
+    await request(app).patch("/api/v1/me").expect(401);
+  });
 });
 
-function authHeaders(userId: string, email: string) {
-  return {
+function authHeaders(userId: string, email: string, displayName?: string) {
+  const headers: Record<string, string> = {
     "x-test-auth-email": email,
     "x-test-auth-user-id": userId,
   };
+
+  if (displayName) {
+    headers["x-test-auth-display-name"] = displayName;
+  }
+
+  return headers;
 }
 
 async function createList(name: string) {

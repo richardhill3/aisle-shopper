@@ -35,6 +35,15 @@ export type ShoppingListSummary = {
   updatedAt: string;
 };
 
+export type Profile = {
+  id: string;
+  supabaseUserId: string;
+  email: string;
+  displayName: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ApiErrorCode =
   | "invalid_request"
   | "not_found"
@@ -55,6 +64,10 @@ export type ListsResponse = {
 
 export type ListResponse = {
   list: ShoppingList;
+};
+
+export type ProfileResponse = {
+  profile: Profile;
 };
 
 export type CreateListRequest = {
@@ -84,4 +97,8 @@ export type CreateItemRequest = {
 export type UpdateItemRequest = {
   name?: string;
   checked?: boolean;
+};
+
+export type UpdateProfileRequest = {
+  displayName: string | null;
 };
