@@ -17,6 +17,8 @@ import {
   updateList,
 } from "../../storage/lists";
 import { ApiClientError, apiRequest } from "@/utils/api";
+import { isSignedIn } from "@/utils/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 jest.mock("@/utils/api", () => {
   class MockApiClientError extends Error {
@@ -36,7 +38,12 @@ jest.mock("@/utils/api", () => {
   };
 });
 
+jest.mock("@/utils/auth", () => ({
+  isSignedIn: jest.fn(),
+}));
+
 const mockedApiRequest = jest.mocked(apiRequest);
+const mockedIsSignedIn = jest.mocked(isSignedIn);
 
 const list: ShoppingList = {
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -69,6 +76,8 @@ const list: ShoppingList = {
 describe("lists storage API adapter", () => {
   beforeEach(() => {
     mockedApiRequest.mockReset();
+    mockedIsSignedIn.mockResolvedValue(true);
+    AsyncStorage.clear();
   });
 
   it("fetches full lists from summary endpoints", async () => {
@@ -207,5 +216,65 @@ describe("lists storage API adapter", () => {
         method: "PATCH",
       },
     );
+  });
+
+  it("stores guest lists locally without calling the API", async () => {
+    mockedIsSignedIn.mockResolvedValue(false);
+
+    const created = await createList("Groceries");
+    const withSection = await addSection(created.id, "Dairy");
+    const sectionId = withSection?.sections[0].id as string;
+    const withItem = await addItem(created.id, sectionId, "Milk");
+    const itemId = withItem?.sections[0].items[0].id as string;
+
+    await expect(getLists()).resolves.toMatchObject([
+      {
+        id: created.id,
+        name: "Groceries",
+        sections: [
+          {
+            name: "Dairy",
+            items: [{ checked: false, name: "Milk" }],
+          },
+        ],
+      },
+    ]);
+
+    await toggleItemChecked(created.id, sectionId, itemId);
+    await expect(getList(created.id)).resolves.toMatchObject({
+      sections: [{ items: [{ checked: true }] }],
+    });
+
+    await resetCheckedItems(created.id);
+    await expect(getList(created.id)).resolves.toMatchObject({
+      sections: [{ items: [{ checked: false }] }],
+    });
+
+    await deleteList(created.id);
+    await expect(getLists()).resolves.toEqual([]);
+    expect(mockedApiRequest).not.toHaveBeenCalled();
+  });
+
+  it("keeps guest local mutations behind the storage facade", async () => {
+    mockedIsSignedIn.mockResolvedValue(false);
+
+    const created = await createList("Store");
+    const updated = await updateList(created.id, { name: "Weekly shop" });
+    const withProduce = await addSection(created.id, "Produce");
+    const produceId = withProduce?.sections[0].id as string;
+    const withDairy = await addSection(created.id, "Dairy");
+    const dairyId = withDairy?.sections[1].id as string;
+
+    await moveSection(created.id, dairyId, "up");
+    await renameSection(created.id, produceId, "Fruit and veg");
+    await deleteSection(created.id, dairyId);
+
+    await expect(getRecentLists()).resolves.toMatchObject([
+      {
+        id: created.id,
+        name: updated?.name,
+        sections: [{ name: "Fruit and veg", position: 0 }],
+      },
+    ]);
   });
 });
