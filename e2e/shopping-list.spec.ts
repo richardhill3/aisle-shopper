@@ -61,3 +61,33 @@ test("creates and shops a persisted list", async ({ page }) => {
   await page.goto("/lists");
   await expect(page.getByText(listName)).toBeVisible();
 });
+
+test("imports guest lists after deterministic sign-in", async ({ page }) => {
+  const guestListName = `E2E Guest Import ${Date.now()}`;
+  const accountOnlyListName = `E2E Account Only ${Date.now()}`;
+
+  await page.goto("/create-list");
+  await page.getByPlaceholder("List name").fill(guestListName);
+  await page.getByRole("button", { name: /create list/i }).click();
+  await expect(page.getByPlaceholder("Add aisle")).toBeVisible();
+
+  await page.goto("/settings");
+  await page.getByRole("button", { name: /sign in with google/i }).click();
+  await expect(page.getByText(e2eUser.email)).toBeVisible();
+
+  await page.goto("/lists");
+  await expect(page.getByText(guestListName)).toBeVisible();
+
+  await page.goto("/create-list");
+  await page.getByPlaceholder("List name").fill(accountOnlyListName);
+  await page.getByRole("button", { name: /create list/i }).click();
+  await expect(page.getByPlaceholder("Add aisle")).toBeVisible();
+
+  await page.goto("/settings");
+  await page.getByRole("button", { name: /^sign out$/i }).click();
+  await expect(page.getByRole("button", { name: /sign in with google/i })).toBeVisible();
+
+  await page.goto("/lists");
+  await expect(page.getByText(guestListName)).toBeVisible();
+  await expect(page.getByText(accountOnlyListName)).toHaveCount(0);
+});

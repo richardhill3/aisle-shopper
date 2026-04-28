@@ -1,9 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   getAccessToken,
   getCurrentSession,
+  getTestAuthHeaders,
   handleAuthRedirect,
   resetAuthClientForTests,
   signInWithGoogle,
@@ -51,11 +53,15 @@ function mockSupabaseClient(session: { access_token: string } | null = null) {
 }
 
 describe("auth utility", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     resetAuthClientForTests();
     mockedCreateClient.mockReset();
     mockedCreateURL.mockClear();
     mockedOpenAuthSessionAsync.mockReset();
+    await AsyncStorage.clear();
+    delete process.env.EXPO_PUBLIC_ENABLE_TEST_AUTH_BYPASS;
+    delete process.env.EXPO_PUBLIC_TEST_AUTH_EMAIL;
+    delete process.env.EXPO_PUBLIC_TEST_AUTH_USER_ID;
     delete process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL;
     setSupabaseEnv();
   });
@@ -131,5 +137,29 @@ describe("auth utility", () => {
     await signOut();
 
     expect(client.auth.signOut).toHaveBeenCalled();
+  });
+
+  it("stores and clears a deterministic test auth session when enabled", async () => {
+    process.env.EXPO_PUBLIC_ENABLE_TEST_AUTH_BYPASS = "true";
+    process.env.EXPO_PUBLIC_TEST_AUTH_EMAIL = "e2e@example.com";
+    process.env.EXPO_PUBLIC_TEST_AUTH_USER_ID = "e2e-user";
+
+    await signInWithGoogle();
+
+    await expect(getCurrentSession()).resolves.toMatchObject({
+      access_token: "test-auth-bypass",
+      user: { id: "e2e-user", email: "e2e@example.com" },
+    });
+    await expect(getAccessToken()).resolves.toBeNull();
+    await expect(getTestAuthHeaders()).resolves.toEqual({
+      "x-test-auth-email": "e2e@example.com",
+      "x-test-auth-user-id": "e2e-user",
+    });
+    expect(mockedOpenAuthSessionAsync).not.toHaveBeenCalled();
+
+    await signOut();
+
+    await expect(getCurrentSession()).resolves.toBeNull();
+    await expect(getTestAuthHeaders()).resolves.toEqual({});
   });
 });

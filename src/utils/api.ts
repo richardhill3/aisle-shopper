@@ -1,5 +1,5 @@
 import type { ApiErrorResponse } from "@shared";
-import { getAccessToken } from "@/utils/auth";
+import { getAccessToken, getTestAuthHeaders } from "@/utils/auth";
 
 const apiBaseUrl = (
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"
@@ -22,10 +22,12 @@ export async function apiRequest<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const accessToken = await getAccessToken();
+  const testAuthHeaders = await getTestAuthHeaders();
   const headers = {
     Accept: "application/json",
     ...(options.body ? { "Content-Type": "application/json" } : {}),
     ...normalizeHeaders(options.headers),
+    ...testAuthHeaders,
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   };
 

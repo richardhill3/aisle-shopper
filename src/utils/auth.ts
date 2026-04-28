@@ -9,12 +9,38 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
 let supabaseClient: SupabaseClient | null = null;
+const testAuthKey = "aisle-shopper:test-auth";
+
+type TestAuthIdentity = {
+  email: string;
+  userId: string;
+};
 
 export function resetAuthClientForTests() {
   supabaseClient = null;
 }
 
 export async function getCurrentSession(): Promise<Session | null> {
+  const testIdentity = await getTestAuthIdentity();
+
+  if (testIdentity) {
+    return {
+      access_token: "test-auth-bypass",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      expires_in: 3600,
+      refresh_token: "test-auth-bypass",
+      token_type: "bearer",
+      user: {
+        id: testIdentity.userId,
+        email: testIdentity.email,
+      },
+    } as Session;
+  }
+
+  if (testAuthBypassEnabled()) {
+    return null;
+  }
+
   const { data, error } = await getSupabaseClient().auth.getSession();
 
   if (error) {
@@ -25,8 +51,25 @@ export async function getCurrentSession(): Promise<Session | null> {
 }
 
 export async function getAccessToken(): Promise<string | null> {
+  if (await getTestAuthIdentity()) {
+    return null;
+  }
+
   const session = await getCurrentSession();
   return session?.access_token ?? null;
+}
+
+export async function getTestAuthHeaders(): Promise<Record<string, string>> {
+  const testIdentity = await getTestAuthIdentity();
+
+  if (!testIdentity) {
+    return {};
+  }
+
+  return {
+    "x-test-auth-email": testIdentity.email,
+    "x-test-auth-user-id": testIdentity.userId,
+  };
 }
 
 export async function isSignedIn(): Promise<boolean> {
@@ -34,6 +77,14 @@ export async function isSignedIn(): Promise<boolean> {
 }
 
 export async function signInWithGoogle(): Promise<void> {
+  if (testAuthBypassEnabled()) {
+    await AsyncStorage.setItem(
+      testAuthKey,
+      JSON.stringify(getDefaultTestAuth()),
+    );
+    return;
+  }
+
   const redirectTo = getAuthRedirectUrl();
   const { data, error } = await getSupabaseClient().auth.signInWithOAuth({
     options: {
@@ -90,11 +141,36 @@ export async function handleAuthRedirect(url: string): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
+  if (testAuthBypassEnabled()) {
+    await AsyncStorage.removeItem(testAuthKey);
+    return;
+  }
+
   const { error } = await getSupabaseClient().auth.signOut();
 
   if (error) {
     throw new Error(error.message);
   }
+}
+
+async function getTestAuthIdentity(): Promise<TestAuthIdentity | null> {
+  if (!testAuthBypassEnabled()) {
+    return null;
+  }
+
+  const value = await AsyncStorage.getItem(testAuthKey);
+  return value ? (JSON.parse(value) as TestAuthIdentity) : null;
+}
+
+function getDefaultTestAuth(): TestAuthIdentity {
+  return {
+    email: process.env.EXPO_PUBLIC_TEST_AUTH_EMAIL ?? "e2e-owner@example.com",
+    userId: process.env.EXPO_PUBLIC_TEST_AUTH_USER_ID ?? "e2e-owner",
+  };
+}
+
+function testAuthBypassEnabled() {
+  return process.env.EXPO_PUBLIC_ENABLE_TEST_AUTH_BYPASS === "true";
 }
 
 function getSupabaseClient() {

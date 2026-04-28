@@ -39,7 +39,10 @@ export default defineConfig({
         "npx expo export --platform web --output-dir dist-e2e && npx serve dist-e2e --single --listen 8081",
       env: {
         EXPO_NO_TELEMETRY: "1",
+        EXPO_PUBLIC_ENABLE_TEST_AUTH_BYPASS: "true",
         EXPO_PUBLIC_API_URL: "http://127.0.0.1:3000",
+        EXPO_PUBLIC_TEST_AUTH_EMAIL: "e2e-owner@example.com",
+        EXPO_PUBLIC_TEST_AUTH_USER_ID: "e2e-owner",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
