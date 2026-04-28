@@ -3,12 +3,14 @@ import cors from "cors";
 import express from "express";
 import { apiRouter } from "./routes";
 import { formatError } from "./errors";
+import { resolveAuth } from "./auth";
 
 export function createApp() {
   const app = express();
 
   app.use(cors());
   app.use(express.json());
+  app.use(resolveAuth);
   app.use("/api/v1", apiRouter);
 
   app.use(

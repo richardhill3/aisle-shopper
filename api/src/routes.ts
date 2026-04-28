@@ -41,7 +41,9 @@ apiRouter.get("/health", (_request, response) => {
 apiRouter.get("/lists/recent", async (request, response, next) => {
   try {
     const limit = paging(request.query.limit, 3, 50);
-    response.json({ lists: await listSummaries(limit, 0) });
+    response.json({
+      lists: await listSummaries(limit, 0, request.currentProfile),
+    });
   } catch (error) {
     next(error);
   }
@@ -51,7 +53,9 @@ apiRouter.get("/lists", async (request, response, next) => {
   try {
     const limit = paging(request.query.limit, 50, 100);
     const offset = paging(request.query.offset, 0, Number.MAX_SAFE_INTEGER);
-    response.json({ lists: await listSummaries(limit, offset) });
+    response.json({
+      lists: await listSummaries(limit, offset, request.currentProfile),
+    });
   } catch (error) {
     next(error);
   }
@@ -61,7 +65,9 @@ apiRouter.post("/lists", async (request, response, next) => {
   try {
     const body = request.body as Partial<CreateListRequest>;
     const name = requiredName(body.name, "List name");
-    response.status(201).json({ list: await createList(name) });
+    response.status(201).json({
+      list: await createList(name, request.currentProfile),
+    });
   } catch (error) {
     next(error);
   }
@@ -69,7 +75,11 @@ apiRouter.post("/lists", async (request, response, next) => {
 
 apiRouter.get("/lists/:listId", async (request, response, next) => {
   try {
-    const list = await getList(request.params.listId);
+    const list = await getList(
+      request.params.listId,
+      undefined,
+      request.currentProfile,
+    );
 
     if (!list) {
       throw notFound("List not found.");
@@ -85,7 +95,9 @@ apiRouter.patch("/lists/:listId", async (request, response, next) => {
   try {
     const body = request.body as Partial<UpdateListRequest>;
     const name = requiredName(body.name, "List name");
-    response.json({ list: await updateList(request.params.listId, name) });
+    response.json({
+      list: await updateList(request.params.listId, name, request.currentProfile),
+    });
   } catch (error) {
     next(error);
   }
@@ -93,7 +105,7 @@ apiRouter.patch("/lists/:listId", async (request, response, next) => {
 
 apiRouter.delete("/lists/:listId", async (request, response, next) => {
   try {
-    await deleteList(request.params.listId);
+    await deleteList(request.params.listId, request.currentProfile);
     response.status(204).send();
   } catch (error) {
     next(error);
@@ -105,7 +117,7 @@ apiRouter.post("/lists/:listId/sections", async (request, response, next) => {
     const body = request.body as Partial<CreateSectionRequest>;
     const name = requiredName(body.name, "Aisle name");
     response.status(201).json({
-      list: await addSection(request.params.listId, name),
+      list: await addSection(request.params.listId, name, request.currentProfile),
     });
   } catch (error) {
     next(error);
@@ -123,6 +135,7 @@ apiRouter.patch(
           request.params.listId,
           request.params.sectionId,
           name,
+          request.currentProfile,
         ),
       });
     } catch (error) {
@@ -139,6 +152,7 @@ apiRouter.delete(
         list: await deleteSection(
           request.params.listId,
           request.params.sectionId,
+          request.currentProfile,
         ),
       });
     } catch (error) {
@@ -157,6 +171,7 @@ apiRouter.patch(
           request.params.listId,
           request.params.sectionId,
           direction(body.direction),
+          request.currentProfile,
         ),
       });
     } catch (error) {
@@ -176,6 +191,7 @@ apiRouter.post(
           request.params.listId,
           request.params.sectionId,
           name,
+          request.currentProfile,
         ),
       });
     } catch (error) {
@@ -202,6 +218,7 @@ apiRouter.patch(
           request.params.sectionId,
           request.params.itemId,
           { checked, name },
+          request.currentProfile,
         ),
       });
     } catch (error) {
@@ -219,6 +236,7 @@ apiRouter.delete(
           request.params.listId,
           request.params.sectionId,
           request.params.itemId,
+          request.currentProfile,
         ),
       });
     } catch (error) {
@@ -231,7 +249,12 @@ apiRouter.post(
   "/lists/:listId/items/reset-checked",
   async (request, response, next) => {
     try {
-      response.json({ list: await resetCheckedItems(request.params.listId) });
+      response.json({
+        list: await resetCheckedItems(
+          request.params.listId,
+          request.currentProfile,
+        ),
+      });
     } catch (error) {
       next(error);
     }

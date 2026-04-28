@@ -8,7 +8,9 @@ import { pool } from "../src/db";
 const app = createApp();
 
 async function resetDatabase() {
-  await pool.query("TRUNCATE items, sections, lists RESTART IDENTITY CASCADE");
+  await pool.query(
+    "TRUNCATE items, sections, lists, profiles RESTART IDENTITY CASCADE",
+  );
 }
 
 beforeAll(async () => {
@@ -235,7 +237,126 @@ describe("shopping list API", () => {
 
     expect(counts.rows[0]).toEqual({ items: "0", lists: "0", sections: "0" });
   });
+
+  it("scopes authenticated list CRUD to the current owner", async () => {
+    const userA = authHeaders("user-a", "UserA@Example.com");
+    const userB = authHeaders("user-b", "user-b@example.com");
+
+    const aCreated = await request(app)
+      .post("/api/v1/lists")
+      .set(userA)
+      .send({ name: "A list" })
+      .expect(201);
+    const bCreated = await request(app)
+      .post("/api/v1/lists")
+      .set(userB)
+      .send({ name: "B list" })
+      .expect(201);
+
+    const aListId = aCreated.body.list.id as string;
+    const bListId = bCreated.body.list.id as string;
+
+    await request(app)
+      .get("/api/v1/lists")
+      .set(userA)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.lists.map((list: { id: string }) => list.id)).toEqual([
+          aListId,
+        ]);
+      });
+
+    await request(app)
+      .get("/api/v1/lists/recent")
+      .set(userB)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.lists.map((list: { id: string }) => list.id)).toEqual([
+          bListId,
+        ]);
+      });
+
+    await request(app)
+      .get(`/api/v1/lists/${aListId}`)
+      .set(userA)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list.name).toBe("A list");
+      });
+
+    await request(app)
+      .patch(`/api/v1/lists/${aListId}`)
+      .set(userA)
+      .send({ name: "A renamed list" })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list.name).toBe("A renamed list");
+      });
+
+    await request(app).delete(`/api/v1/lists/${aListId}`).set(userA).expect(204);
+    await request(app).get(`/api/v1/lists/${aListId}`).set(userA).expect(404);
+  });
+
+  it("hides and denies another authenticated user's owned list", async () => {
+    const userA = authHeaders("user-a", "user-a@example.com");
+    const userB = authHeaders("user-b", "user-b@example.com");
+
+    const created = await request(app)
+      .post("/api/v1/lists")
+      .set(userA)
+      .send({ name: "Private list" })
+      .expect(201);
+    const listId = created.body.list.id as string;
+
+    await request(app).get(`/api/v1/lists/${listId}`).set(userB).expect(404);
+    await request(app)
+      .patch(`/api/v1/lists/${listId}`)
+      .set(userB)
+      .send({ name: "Stolen" })
+      .expect(404);
+    await request(app).delete(`/api/v1/lists/${listId}`).set(userB).expect(404);
+
+    const section = await request(app)
+      .post(`/api/v1/lists/${listId}/sections`)
+      .set(userA)
+      .send({ name: "Dairy" })
+      .expect(201);
+    const sectionId = section.body.list.sections[0].id as string;
+    const item = await request(app)
+      .post(`/api/v1/lists/${listId}/sections/${sectionId}/items`)
+      .set(userA)
+      .send({ name: "Milk" })
+      .expect(201);
+    const itemId = item.body.list.sections[0].items[0].id as string;
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/sections`)
+      .set(userB)
+      .send({ name: "Produce" })
+      .expect(404);
+    await request(app)
+      .patch(`/api/v1/lists/${listId}/sections/${sectionId}`)
+      .set(userB)
+      .send({ name: "Cheese" })
+      .expect(404);
+    await request(app)
+      .patch(`/api/v1/lists/${listId}/sections/${sectionId}/items/${itemId}`)
+      .set(userB)
+      .send({ checked: true })
+      .expect(404);
+    await request(app)
+      .post(`/api/v1/lists/${listId}/items/reset-checked`)
+      .set(userB)
+      .expect(404);
+  });
 });
+
+function authHeaders(userId: string, email: string) {
+  return {
+    "x-test-auth-email": email,
+    "x-test-auth-user-id": userId,
+  };
+}
 
 async function createList(name: string) {
   const response = await request(app).post("/api/v1/lists").send({ name });

@@ -38,6 +38,8 @@ export type ShoppingListSummary = {
 export type ApiErrorCode =
   | "invalid_request"
   | "not_found"
+  | "unauthorized"
+  | "forbidden"
   | "internal_error";
 
 export type ApiErrorResponse = {

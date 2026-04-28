@@ -1,9 +1,27 @@
-CREATE TABLE IF NOT EXISTS lists (
+CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
+  supabase_user_id TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  display_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS lists (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  owner_profile_id TEXT REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE lists
+  ADD COLUMN IF NOT EXISTS owner_profile_id TEXT REFERENCES profiles(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS lists_owner_profile_updated_idx
+  ON lists(owner_profile_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS profiles_email_idx ON profiles(email);
 
 CREATE TABLE IF NOT EXISTS sections (
   id TEXT PRIMARY KEY,

@@ -6,6 +6,7 @@ import type {
   ShoppingSection,
 } from "../../shared/src";
 import type { Db } from "./db";
+import type { CurrentProfile } from "./auth";
 import { oneOrNull, pool, transaction } from "./db";
 import { notFound } from "./errors";
 
@@ -79,7 +80,18 @@ function mapSection(row: SectionRow, items: ShoppingItem[]): ShoppingSection {
   };
 }
 
-export async function listSummaries(limit = 50, offset = 0) {
+export async function listSummaries(
+  limit = 50,
+  offset = 0,
+  currentProfile?: CurrentProfile,
+) {
+  const params: unknown[] = [limit, offset];
+  const ownerClause = currentProfile ? "WHERE lists.owner_profile_id = $3" : "";
+
+  if (currentProfile) {
+    params.push(currentProfile.id);
+  }
+
   const { rows } = await pool.query<ListSummaryRow>(
     `
       SELECT
@@ -92,26 +104,38 @@ export async function listSummaries(limit = 50, offset = 0) {
       FROM lists
       LEFT JOIN sections ON sections.list_id = lists.id
       LEFT JOIN items ON items.section_id = sections.id
+      ${ownerClause}
       GROUP BY lists.id
       ORDER BY lists.updated_at DESC
       LIMIT $1 OFFSET $2
     `,
-    [limit, offset],
+    params,
   );
 
   return rows.map(mapSummary);
 }
 
-export async function getList(id: string, db: Db = pool) {
+export async function getList(
+  id: string,
+  db: Db = pool,
+  currentProfile?: CurrentProfile,
+) {
+  const params: unknown[] = [id];
+  const ownerClause = currentProfile ? "AND owner_profile_id = $2" : "";
+
+  if (currentProfile) {
+    params.push(currentProfile.id);
+  }
+
   const list = oneOrNull(
     (
       await db.query<ListRow>(
         `
           SELECT id, name, created_at, updated_at
           FROM lists
-          WHERE id = $1
+          WHERE id = $1 ${ownerClause}
         `,
-        [id],
+        params,
       )
     ).rows,
   );
@@ -164,8 +188,12 @@ export async function getList(id: string, db: Db = pool) {
   } satisfies ShoppingList;
 }
 
-export async function requireList(id: string, db: Db = pool) {
-  const list = await getList(id, db);
+export async function requireList(
+  id: string,
+  db: Db = pool,
+  currentProfile?: CurrentProfile,
+) {
+  const list = await getList(id, db, currentProfile);
 
   if (!list) {
     throw notFound("List not found.");
@@ -174,48 +202,66 @@ export async function requireList(id: string, db: Db = pool) {
   return list;
 }
 
-export async function createList(name: string) {
+export async function createList(name: string, currentProfile?: CurrentProfile) {
   const id = randomUUID();
 
   return transaction(async (client) => {
     await client.query(
       `
-        INSERT INTO lists (id, name)
-        VALUES ($1, $2)
+        INSERT INTO lists (id, name, owner_profile_id)
+        VALUES ($1, $2, $3)
       `,
-      [id, name],
+      [id, name, currentProfile?.id ?? null],
     );
 
-    return requireList(id, client);
+    return requireList(id, client, currentProfile);
   });
 }
 
-export async function updateList(id: string, name: string) {
+export async function updateList(
+  id: string,
+  name: string,
+  currentProfile?: CurrentProfile,
+) {
   return transaction(async (client) => {
+    const params: unknown[] = [id, name];
+    const ownerClause = currentProfile ? "AND owner_profile_id = $3" : "";
+
+    if (currentProfile) {
+      params.push(currentProfile.id);
+    }
+
     const result = await client.query(
       `
         UPDATE lists
         SET name = $2, updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 ${ownerClause}
       `,
-      [id, name],
+      params,
     );
 
     if (result.rowCount === 0) {
       throw notFound("List not found.");
     }
 
-    return requireList(id, client);
+    return requireList(id, client, currentProfile);
   });
 }
 
-export async function deleteList(id: string) {
+export async function deleteList(id: string, currentProfile?: CurrentProfile) {
+  const params: unknown[] = [id];
+  const ownerClause = currentProfile ? "AND owner_profile_id = $2" : "";
+
+  if (currentProfile) {
+    params.push(currentProfile.id);
+  }
+
   const result = await pool.query(
     `
       DELETE FROM lists
-      WHERE id = $1
+      WHERE id = $1 ${ownerClause}
     `,
-    [id],
+    params,
   );
 
   if (result.rowCount === 0) {
@@ -223,11 +269,15 @@ export async function deleteList(id: string) {
   }
 }
 
-export async function addSection(listId: string, name: string) {
+export async function addSection(
+  listId: string,
+  name: string,
+  currentProfile?: CurrentProfile,
+) {
   const id = randomUUID();
 
   return transaction(async (client) => {
-    await lockList(client, listId);
+    await lockList(client, listId, currentProfile);
     const position = await nextPosition(client, "sections", "list_id", listId);
 
     await client.query(
@@ -239,7 +289,7 @@ export async function addSection(listId: string, name: string) {
     );
     await touchList(client, listId);
 
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
@@ -247,8 +297,11 @@ export async function updateSection(
   listId: string,
   sectionId: string,
   name: string,
+  currentProfile?: CurrentProfile,
 ) {
   return transaction(async (client) => {
+    await requireList(listId, client, currentProfile);
+
     const result = await client.query(
       `
         UPDATE sections
@@ -263,12 +316,18 @@ export async function updateSection(
     }
 
     await touchList(client, listId);
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
-export async function deleteSection(listId: string, sectionId: string) {
+export async function deleteSection(
+  listId: string,
+  sectionId: string,
+  currentProfile?: CurrentProfile,
+) {
   return transaction(async (client) => {
+    await requireList(listId, client, currentProfile);
+
     const result = await client.query(
       `
         DELETE FROM sections
@@ -283,7 +342,7 @@ export async function deleteSection(listId: string, sectionId: string) {
 
     await touchList(client, listId);
     await reindexSections(client, listId);
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
@@ -291,8 +350,11 @@ export async function moveSection(
   listId: string,
   sectionId: string,
   direction: "up" | "down",
+  currentProfile?: CurrentProfile,
 ) {
   return transaction(async (client) => {
+    await requireList(listId, client, currentProfile);
+
     const sections = (
       await client.query<SectionRow>(
         `
@@ -316,7 +378,7 @@ export async function moveSection(
     const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
     if (nextIndex < 0 || nextIndex >= sections.length) {
-      return requireList(listId, client);
+      return requireList(listId, client, currentProfile);
     }
 
     const current = sections[currentIndex];
@@ -348,15 +410,20 @@ export async function moveSection(
     );
     await touchList(client, listId);
 
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
-export async function addItem(listId: string, sectionId: string, name: string) {
+export async function addItem(
+  listId: string,
+  sectionId: string,
+  name: string,
+  currentProfile?: CurrentProfile,
+) {
   const id = randomUUID();
 
   return transaction(async (client) => {
-    await lockSection(client, listId, sectionId);
+    await lockSection(client, listId, sectionId, currentProfile);
     const position = await nextPosition(
       client,
       "items",
@@ -374,7 +441,7 @@ export async function addItem(listId: string, sectionId: string, name: string) {
     await touchSection(client, sectionId);
     await touchList(client, listId);
 
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
@@ -383,9 +450,10 @@ export async function updateItem(
   sectionId: string,
   itemId: string,
   updates: { checked?: boolean; name?: string },
+  currentProfile?: CurrentProfile,
 ) {
   return transaction(async (client) => {
-    await requireSection(client, listId, sectionId);
+    await requireSection(client, listId, sectionId, currentProfile);
 
     const current = oneOrNull(
       (
@@ -420,7 +488,7 @@ export async function updateItem(
     await touchSection(client, sectionId);
     await touchList(client, listId);
 
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
@@ -428,9 +496,10 @@ export async function deleteItem(
   listId: string,
   sectionId: string,
   itemId: string,
+  currentProfile?: CurrentProfile,
 ) {
   return transaction(async (client) => {
-    await requireSection(client, listId, sectionId);
+    await requireSection(client, listId, sectionId, currentProfile);
     const result = await client.query(
       `
         DELETE FROM items
@@ -447,13 +516,16 @@ export async function deleteItem(
     await touchList(client, listId);
     await reindexItems(client, sectionId);
 
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
-export async function resetCheckedItems(listId: string) {
+export async function resetCheckedItems(
+  listId: string,
+  currentProfile?: CurrentProfile,
+) {
   return transaction(async (client) => {
-    await requireList(listId, client);
+    await requireList(listId, client, currentProfile);
 
     await client.query(
       `
@@ -475,11 +547,18 @@ export async function resetCheckedItems(listId: string) {
     );
     await touchList(client, listId);
 
-    return requireList(listId, client);
+    return requireList(listId, client, currentProfile);
   });
 }
 
-async function requireSection(db: Db, listId: string, sectionId: string) {
+async function requireSection(
+  db: Db,
+  listId: string,
+  sectionId: string,
+  currentProfile?: CurrentProfile,
+) {
+  await requireList(listId, db, currentProfile);
+
   const section = oneOrNull(
     (
       await db.query(
@@ -498,17 +577,28 @@ async function requireSection(db: Db, listId: string, sectionId: string) {
   }
 }
 
-async function lockList(db: Db, listId: string) {
+async function lockList(
+  db: Db,
+  listId: string,
+  currentProfile?: CurrentProfile,
+) {
+  const params: unknown[] = [listId];
+  const ownerClause = currentProfile ? "AND owner_profile_id = $2" : "";
+
+  if (currentProfile) {
+    params.push(currentProfile.id);
+  }
+
   const list = oneOrNull(
     (
       await db.query(
         `
           SELECT id
           FROM lists
-          WHERE id = $1
+          WHERE id = $1 ${ownerClause}
           FOR UPDATE
         `,
-        [listId],
+        params,
       )
     ).rows,
   );
@@ -518,17 +608,34 @@ async function lockList(db: Db, listId: string) {
   }
 }
 
-async function lockSection(db: Db, listId: string, sectionId: string) {
+async function lockSection(
+  db: Db,
+  listId: string,
+  sectionId: string,
+  currentProfile?: CurrentProfile,
+) {
+  const params: unknown[] = [listId, sectionId];
+  const ownerClause = currentProfile
+    ? "AND lists.owner_profile_id = $3"
+    : "";
+
+  if (currentProfile) {
+    params.push(currentProfile.id);
+  }
+
   const section = oneOrNull(
     (
       await db.query(
         `
-          SELECT id
+          SELECT sections.id
           FROM sections
-          WHERE id = $2 AND list_id = $1
+          INNER JOIN lists ON lists.id = sections.list_id
+          WHERE sections.id = $2
+            AND sections.list_id = $1
+            ${ownerClause}
           FOR UPDATE
         `,
-        [listId, sectionId],
+        params,
       )
     ).rows,
   );
