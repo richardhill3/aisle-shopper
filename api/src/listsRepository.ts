@@ -86,7 +86,7 @@ export async function listSummaries(
   currentProfile?: CurrentProfile,
 ) {
   const params: unknown[] = [limit, offset];
-  const ownerClause = currentProfile ? "WHERE lists.owner_profile_id = $3" : "";
+  const accessWhere = currentProfile ? `WHERE ${accessClause("lists", 3)}` : "";
 
   if (currentProfile) {
     params.push(currentProfile.id);
@@ -104,7 +104,7 @@ export async function listSummaries(
       FROM lists
       LEFT JOIN sections ON sections.list_id = lists.id
       LEFT JOIN items ON items.section_id = sections.id
-      ${ownerClause}
+      ${accessWhere}
       GROUP BY lists.id
       ORDER BY lists.updated_at DESC
       LIMIT $1 OFFSET $2
@@ -121,7 +121,7 @@ export async function getList(
   currentProfile?: CurrentProfile,
 ) {
   const params: unknown[] = [id];
-  const ownerClause = currentProfile ? "AND owner_profile_id = $2" : "";
+  const accessWhere = currentProfile ? `AND ${accessClause("lists", 2)}` : "";
 
   if (currentProfile) {
     params.push(currentProfile.id);
@@ -133,7 +133,7 @@ export async function getList(
         `
           SELECT id, name, created_at, updated_at
           FROM lists
-          WHERE id = $1 ${ownerClause}
+          WHERE id = $1 ${accessWhere}
         `,
         params,
       )
@@ -225,7 +225,7 @@ export async function updateList(
 ) {
   return transaction(async (client) => {
     const params: unknown[] = [id, name];
-    const ownerClause = currentProfile ? "AND owner_profile_id = $3" : "";
+    const accessWhere = currentProfile ? `AND ${accessClause("lists", 3)}` : "";
 
     if (currentProfile) {
       params.push(currentProfile.id);
@@ -235,7 +235,7 @@ export async function updateList(
       `
         UPDATE lists
         SET name = $2, updated_at = NOW()
-        WHERE id = $1 ${ownerClause}
+        WHERE id = $1 ${accessWhere}
       `,
       params,
     );
@@ -583,7 +583,7 @@ async function lockList(
   currentProfile?: CurrentProfile,
 ) {
   const params: unknown[] = [listId];
-  const ownerClause = currentProfile ? "AND owner_profile_id = $2" : "";
+  const accessWhere = currentProfile ? `AND ${accessClause("lists", 2)}` : "";
 
   if (currentProfile) {
     params.push(currentProfile.id);
@@ -595,7 +595,7 @@ async function lockList(
         `
           SELECT id
           FROM lists
-          WHERE id = $1 ${ownerClause}
+          WHERE id = $1 ${accessWhere}
           FOR UPDATE
         `,
         params,
@@ -615,9 +615,7 @@ async function lockSection(
   currentProfile?: CurrentProfile,
 ) {
   const params: unknown[] = [listId, sectionId];
-  const ownerClause = currentProfile
-    ? "AND lists.owner_profile_id = $3"
-    : "";
+  const accessWhere = currentProfile ? `AND ${accessClause("lists", 3)}` : "";
 
   if (currentProfile) {
     params.push(currentProfile.id);
@@ -632,7 +630,7 @@ async function lockSection(
           INNER JOIN lists ON lists.id = sections.list_id
           WHERE sections.id = $2
             AND sections.list_id = $1
-            ${ownerClause}
+            ${accessWhere}
           FOR UPDATE
         `,
         params,
@@ -717,4 +715,16 @@ async function reindexItems(db: Db, sectionId: string) {
     `,
     [sectionId],
   );
+}
+
+function accessClause(listAlias: string, profileParamIndex: number) {
+  return `(
+    ${listAlias}.owner_profile_id = $${profileParamIndex}
+    OR EXISTS (
+      SELECT 1
+      FROM list_memberships
+      WHERE list_memberships.list_id = ${listAlias}.id
+        AND list_memberships.profile_id = $${profileParamIndex}
+    )
+  )`;
 }

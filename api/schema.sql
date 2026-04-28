@@ -23,6 +23,16 @@ CREATE INDEX IF NOT EXISTS lists_owner_profile_updated_idx
 
 CREATE INDEX IF NOT EXISTS profiles_email_idx ON profiles(email);
 
+CREATE TABLE IF NOT EXISTS list_memberships (
+  list_id TEXT NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+  profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (list_id, profile_id)
+);
+
+CREATE INDEX IF NOT EXISTS list_memberships_profile_list_idx
+  ON list_memberships(profile_id, list_id);
+
 CREATE TABLE IF NOT EXISTS sections (
   id TEXT PRIMARY KEY,
   list_id TEXT NOT NULL REFERENCES lists(id) ON DELETE CASCADE,

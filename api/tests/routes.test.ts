@@ -9,7 +9,7 @@ const app = createApp();
 
 async function resetDatabase() {
   await pool.query(
-    "TRUNCATE items, sections, lists, profiles RESTART IDENTITY CASCADE",
+    "TRUNCATE items, sections, list_memberships, lists, profiles RESTART IDENTITY CASCADE",
   );
 }
 
@@ -350,6 +350,119 @@ describe("shopping list API", () => {
       .expect(404);
   });
 
+  it("allows collaborators to read and edit shared lists but not delete them", async () => {
+    const owner = authHeaders("owner-user", "owner@example.com");
+    const collaborator = authHeaders("collaborator-user", "collab@example.com");
+
+    const ownerList = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared list" })
+      .expect(201);
+    const listId = ownerList.body.list.id as string;
+    const collaboratorProfileId = await getProfileId(collaborator);
+    await addMembership(listId, collaboratorProfileId);
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}`)
+      .set(collaborator)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list.name).toBe("Shared list");
+      });
+
+    await request(app)
+      .patch(`/api/v1/lists/${listId}`)
+      .set(collaborator)
+      .send({ name: "Collaborator renamed" })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list.name).toBe("Collaborator renamed");
+      });
+
+    const section = await request(app)
+      .post(`/api/v1/lists/${listId}/sections`)
+      .set(collaborator)
+      .send({ name: "Produce" })
+      .expect(201);
+    const sectionId = section.body.list.sections[0].id as string;
+
+    const item = await request(app)
+      .post(`/api/v1/lists/${listId}/sections/${sectionId}/items`)
+      .set(collaborator)
+      .send({ name: "Apples" })
+      .expect(201);
+    const itemId = item.body.list.sections[0].items[0].id as string;
+
+    await request(app)
+      .patch(`/api/v1/lists/${listId}/sections/${sectionId}/items/${itemId}`)
+      .set(collaborator)
+      .send({ checked: true })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list.sections[0].items[0].checked).toBe(true);
+      });
+
+    await request(app)
+      .post(`/api/v1/lists/${listId}/items/reset-checked`)
+      .set(collaborator)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list.sections[0].items[0].checked).toBe(false);
+      });
+
+    await request(app).delete(`/api/v1/lists/${listId}`).set(collaborator).expect(404);
+    await request(app).get(`/api/v1/lists/${listId}`).set(owner).expect(200);
+  });
+
+  it("includes owned and shared lists in authenticated summaries only", async () => {
+    const owner = authHeaders("summary-owner", "owner@example.com");
+    const collaborator = authHeaders("summary-collab", "collab@example.com");
+    const unrelated = authHeaders("summary-other", "other@example.com");
+
+    const owned = await request(app)
+      .post("/api/v1/lists")
+      .set(collaborator)
+      .send({ name: "Owned list" })
+      .expect(201);
+    const shared = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared list" })
+      .expect(201);
+    const unrelatedList = await request(app)
+      .post("/api/v1/lists")
+      .set(unrelated)
+      .send({ name: "Unrelated list" })
+      .expect(201);
+
+    const collaboratorProfileId = await getProfileId(collaborator);
+    await addMembership(shared.body.list.id, collaboratorProfileId);
+
+    await request(app)
+      .get("/api/v1/lists")
+      .set(collaborator)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.lists.map((list: { id: string }) => list.id)).toEqual(
+          expect.arrayContaining([owned.body.list.id, shared.body.list.id]),
+        );
+        expect(response.body.lists.map((list: { id: string }) => list.id)).not.toContain(
+          unrelatedList.body.list.id,
+        );
+      });
+
+    await request(app)
+      .get("/api/v1/lists/recent")
+      .set(collaborator)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.lists.map((list: { id: string }) => list.id)).toEqual(
+          expect.arrayContaining([owned.body.list.id, shared.body.list.id]),
+        );
+      });
+  });
+
   it("fetches and updates the current authenticated profile", async () => {
     const user = authHeaders(
       "profile-user",
@@ -434,4 +547,19 @@ async function addItem(listId: string, sectionId: string, name: string) {
   await request(app)
     .post(`/api/v1/lists/${listId}/sections/${sectionId}/items`)
     .send({ name });
+}
+
+async function getProfileId(headers: Record<string, string>) {
+  const response = await request(app).get("/api/v1/me").set(headers).expect(200);
+  return response.body.profile.id as string;
+}
+
+async function addMembership(listId: string, profileId: string) {
+  await pool.query(
+    `
+      INSERT INTO list_memberships (list_id, profile_id)
+      VALUES ($1, $2)
+    `,
+    [listId, profileId],
+  );
 }
