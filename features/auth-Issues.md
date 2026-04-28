@@ -4,6 +4,8 @@ Generated from `features/auth-PRD.md` after reviewing the current Expo Router ap
 
 # Issue 1: Add Auth-Aware Database Ownership Tracer
 
+## Status Completed: 8587167 feat: add auth-aware list ownership
+
 ## Type
 
 AFK
@@ -45,6 +47,8 @@ Use a test-only auth bypass for deterministic tests; do not drive real Google OA
 
 # Issue 2: Add App Auth Client and Token-Attached API Requests
 
+## Status Completed: 88a59e6 feat: add Supabase auth client
+
 ## Type
 
 AFK
@@ -85,6 +89,8 @@ Keep token attachment centralized in `src/utils/api.ts`; screens and components 
 
 # Issue 3: Split List Data Access Between Guest Local Storage and Signed-In API
 
+## Status Completed: 60711b5 feat: split guest and signed-in list storage
+
 ## Type
 
 AFK
@@ -123,6 +129,8 @@ Preserve immediate guest usage while routing signed-in list operations to the ex
 This is the key app-side tracer bullet: the user-visible list flow remains intact while the source of truth changes based on auth state.
 
 # Issue 4: Import Guest Lists Once After Sign-In
+
+## Status Completed: 0c32efc feat: import guest lists after sign-in
 
 ## Type
 
@@ -163,6 +171,8 @@ Automatically copy device-local guest lists into the signed-in account when a gu
 Keep import logic deterministic and idempotent. If bulk API endpoints are not introduced, use existing list/section/item endpoints for the first implementation.
 
 # Issue 5: Add Settings Account Section for Sign-In, Profile, and Sign-Out
+
+## Status Ready: Human-in-the-Loop
 
 ## Type
 
@@ -205,6 +215,8 @@ Human review is useful here for OAuth copy, loading states, and how prominently 
 
 # Issue 6: Add Current User Profile API
 
+## Status Completed: 0703059 feat: add current user profile api
+
 ## Type
 
 AFK
@@ -244,6 +256,8 @@ This can be implemented independently from the final Settings UI, but it support
 
 # Issue 7: Enforce Owner vs Collaborator Permissions in Existing List Routes
 
+## Status Completed: e79f642 feat: add collaborator list permissions
+
 ## Type
 
 AFK
@@ -282,6 +296,8 @@ Extend list authorization so owners and future collaborators can edit/shop share
 This issue prepares the permission model before exposing sharing UI. It should reuse the same repository methods instead of adding parallel collaborator-specific code paths.
 
 # Issue 8: Add Owner Sharing API by Email
+
+## Status Completed: e306f4b feat: add owner sharing api
 
 ## Type
 
@@ -327,6 +343,8 @@ Use profiles as the source of truth for share targets. Do not add pending invite
 
 # Issue 9: Surface Ownership Metadata to the App
 
+## Status Ready
+
 ## Type
 
 AFK
@@ -364,6 +382,8 @@ Give the app enough list metadata to know whether the current user owns a list a
 Prefer capability flags if they simplify UI conditions and keep screens from duplicating role rules.
 
 # Issue 10: Add List Sharing UI for Owners
+
+## Status Blocked: waiting on Issues 8 and 9
 
 ## Type
 
@@ -407,6 +427,8 @@ Human review is needed for where the sharing entry point lives and how much coll
 
 # Issue 11: Add Deterministic Test Auth Bypass for E2E and API Cleanup
 
+## Status Ready
+
 ## Type
 
 AFK
@@ -445,6 +467,8 @@ This should reuse the same normalized current-user path as Supabase JWT auth so 
 
 # Issue 12: Add Signed-In Import E2E Tracer
 
+## Status Blocked: waiting on Issues 5 and 11
+
 ## Type
 
 AFK
@@ -481,6 +505,8 @@ Prove the core end-to-end path: a guest creates a list, signs in through test au
 Keep this as a thin user journey, not a full auth suite. Deeper permission coverage belongs in API and app tests.
 
 # Issue 13: Add Sharing Collaboration E2E Tracer
+
+## Status Blocked: waiting on Issues 10 and 11
 
 ## Type
 
@@ -520,6 +546,8 @@ Prove that an owner can share a list with an existing user and that the collabor
 Prefer testing one representative edit/shop action in e2e and leave exhaustive route permission combinations to API tests.
 
 # Issue 14: Harden Auth Configuration and Manual QA Documentation
+
+## Status Blocked: waiting on Issues 5, 10, and 11
 
 ## Type
 
