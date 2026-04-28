@@ -11,7 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:18081",
+    baseURL: "http://127.0.0.1:8081",
     trace: "on-first-retry",
   },
   projects: [
@@ -35,14 +35,14 @@ export default defineConfig({
     },
     {
       command:
-        "npx expo export --platform web --output-dir dist-e2e && npx serve dist-e2e --single --listen 18081",
+        "npx expo export --platform web --output-dir dist-e2e && npx serve dist-e2e --single --listen 8081",
       env: {
         EXPO_NO_TELEMETRY: "1",
         EXPO_PUBLIC_API_URL: "http://127.0.0.1:3000",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
-      url: "http://127.0.0.1:18081",
+      url: "http://127.0.0.1:8081",
     },
   ],
 });
