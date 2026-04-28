@@ -53,6 +53,7 @@ beforeEach(async () => {
   });
   process.env.SUPABASE_URL = "https://project.supabase.co";
   process.env.SUPABASE_ANON_KEY = "anon-key";
+  process.env.API_ENABLE_TEST_AUTH_BYPASS = "true";
   delete process.env.SUPABASE_PUBLISHABLE_KEY;
   delete process.env.EXPO_PUBLIC_SUPABASE_URL;
   delete process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -61,6 +62,7 @@ beforeEach(async () => {
 afterAll(async () => {
   delete process.env.SUPABASE_URL;
   delete process.env.SUPABASE_ANON_KEY;
+  delete process.env.API_ENABLE_TEST_AUTH_BYPASS;
   await pool.end();
 });
 
@@ -174,6 +176,23 @@ describe("API Supabase auth verification", () => {
       });
 
     expect(supabaseMocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it("rejects test auth bypass unless it is explicitly enabled", async () => {
+    delete process.env.API_ENABLE_TEST_AUTH_BYPASS;
+
+    await request(app)
+      .get("/api/v1/me")
+      .set({
+        "x-test-auth-email": "test@example.com",
+        "x-test-auth-user-id": "test-user",
+      })
+      .expect(401)
+      .expect((response) => {
+        expect(response.body.error.message).toBe(
+          "Test authentication is disabled.",
+        );
+      });
   });
 
   it("fails clearly when bearer auth is used without API Supabase config", async () => {

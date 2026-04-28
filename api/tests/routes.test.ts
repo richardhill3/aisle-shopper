@@ -22,10 +22,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  process.env.API_ENABLE_TEST_AUTH_BYPASS = "true";
   await resetDatabase();
 });
 
 afterAll(async () => {
+  delete process.env.API_ENABLE_TEST_AUTH_BYPASS;
   await pool.end();
 });
 

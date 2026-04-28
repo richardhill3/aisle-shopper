@@ -91,7 +91,10 @@ function resolveTestIdentity(request: Request): AuthIdentity | null {
     return null;
   }
 
-  if (process.env.NODE_ENV === "production") {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.API_ENABLE_TEST_AUTH_BYPASS !== "true"
+  ) {
     throw unauthorized("Test authentication is disabled.");
   }
 

@@ -24,6 +24,7 @@ export default defineConfig({
     {
       command: "npm run api:dev",
       env: {
+        API_ENABLE_TEST_AUTH_BYPASS: "true",
         DATABASE_URL:
           process.env.DATABASE_URL ??
           "postgres://postgres:postgres@localhost:5432/aisle_shopper",

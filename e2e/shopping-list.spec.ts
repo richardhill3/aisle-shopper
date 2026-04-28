@@ -1,14 +1,28 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:3000";
+const e2eUser = {
+  email: "e2e-owner@example.com",
+  id: "e2e-owner",
+};
+
+function testAuthHeaders(user = e2eUser) {
+  return {
+    "x-test-auth-email": user.email,
+    "x-test-auth-user-id": user.id,
+  };
+}
 
 async function deleteAllLists(request: APIRequestContext) {
-  const response = await request.get(`${apiUrl}/api/v1/lists?limit=100`);
+  const headers = testAuthHeaders();
+  const response = await request.get(`${apiUrl}/api/v1/lists?limit=100`, {
+    headers,
+  });
   const body = await response.json();
 
   await Promise.all(
     body.lists.map((list: { id: string }) =>
-      request.delete(`${apiUrl}/api/v1/lists/${list.id}`),
+      request.delete(`${apiUrl}/api/v1/lists/${list.id}`, { headers }),
     ),
   );
 }
