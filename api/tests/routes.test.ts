@@ -450,6 +450,31 @@ describe("shopping list API", () => {
         expect(response.body.lists.map((list: { id: string }) => list.id)).not.toContain(
           unrelatedList.body.list.id,
         );
+        expect(response.body.lists).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: owned.body.list.id,
+              currentUserRole: "owner",
+              capabilities: expect.objectContaining({
+                canDelete: true,
+                canEdit: true,
+                canShare: true,
+                canShop: true,
+              }),
+            }),
+            expect.objectContaining({
+              id: shared.body.list.id,
+              currentUserRole: "collaborator",
+              ownerProfileId: expect.any(String),
+              capabilities: expect.objectContaining({
+                canDelete: false,
+                canEdit: true,
+                canShare: false,
+                canShop: true,
+              }),
+            }),
+          ]),
+        );
       });
 
     await request(app)
@@ -460,6 +485,55 @@ describe("shopping list API", () => {
         expect(response.body.lists.map((list: { id: string }) => list.id)).toEqual(
           expect.arrayContaining([owned.body.list.id, shared.body.list.id]),
         );
+      });
+  });
+
+  it("returns owner and collaborator metadata in authenticated list details", async () => {
+    const owner = authHeaders("metadata-owner", "owner@example.com");
+    const collaborator = authHeaders("metadata-collab", "collab@example.com");
+
+    const created = await request(app)
+      .post("/api/v1/lists")
+      .set(owner)
+      .send({ name: "Shared groceries" })
+      .expect(201);
+    const listId = created.body.list.id as string;
+    const ownerProfileId = created.body.list.ownerProfileId as string;
+    const collaboratorProfileId = await getProfileId(collaborator);
+    await addMembership(listId, collaboratorProfileId);
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}`)
+      .set(owner)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list).toMatchObject({
+          currentUserRole: "owner",
+          ownerProfileId,
+          capabilities: {
+            canDelete: true,
+            canEdit: true,
+            canShare: true,
+            canShop: true,
+          },
+        });
+      });
+
+    await request(app)
+      .get(`/api/v1/lists/${listId}`)
+      .set(collaborator)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.list).toMatchObject({
+          currentUserRole: "collaborator",
+          ownerProfileId,
+          capabilities: {
+            canDelete: false,
+            canEdit: true,
+            canShare: false,
+            canShop: true,
+          },
+        });
       });
   });
 

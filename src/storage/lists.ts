@@ -1,5 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { ListResponse, ListsResponse, ShoppingList } from "@shared";
+import type {
+  ListCapabilities,
+  ListResponse,
+  ListsResponse,
+  ShoppingList,
+} from "@shared";
 import { ApiClientError, apiRequest } from "@/utils/api";
 import { getCurrentSession, isSignedIn } from "@/utils/auth";
 
@@ -7,6 +12,12 @@ export type { ShoppingItem, ShoppingList, ShoppingSection } from "@shared";
 
 const guestListsKey = "aisle-shopper:guest-lists";
 const guestImportKeyPrefix = "aisle-shopper:guest-imports:";
+const guestCapabilities: ListCapabilities = {
+  canDelete: true,
+  canEdit: true,
+  canShare: true,
+  canShop: true,
+};
 
 export async function getLists(): Promise<ShoppingList[]> {
   if (await shouldUseApi()) {
@@ -57,8 +68,11 @@ export async function createList(name: string): Promise<ShoppingList> {
   const now = new Date().toISOString();
   const list: ShoppingList = {
     createdAt: now,
+    capabilities: guestCapabilities,
+    currentUserRole: "guest",
     id: createId(),
     name,
+    ownerProfileId: null,
     sections: [],
     updatedAt: now,
   };
@@ -495,13 +509,15 @@ async function getRequiredList(id: string): Promise<ShoppingList> {
 async function readGuestLists() {
   const value = await AsyncStorage.getItem(guestListsKey);
   const lists = value ? (JSON.parse(value) as ShoppingList[]) : [];
-  return lists.map(cloneList).sort(sortByUpdatedAt);
+  return lists.map(withGuestMetadata).map(cloneList).sort(sortByUpdatedAt);
 }
 
 async function writeGuestLists(lists: ShoppingList[]) {
   await AsyncStorage.setItem(
     guestListsKey,
-    JSON.stringify(lists.map(cloneList).sort(sortByUpdatedAt)),
+    JSON.stringify(
+      lists.map(withGuestMetadata).map(cloneList).sort(sortByUpdatedAt),
+    ),
   );
 }
 
@@ -563,6 +579,15 @@ function reindexItems(section: ShoppingList["sections"][number]) {
 
 function cloneList(list: ShoppingList): ShoppingList {
   return JSON.parse(JSON.stringify(list)) as ShoppingList;
+}
+
+function withGuestMetadata(list: ShoppingList): ShoppingList {
+  return {
+    ...list,
+    capabilities: guestCapabilities,
+    currentUserRole: "guest",
+    ownerProfileId: null,
+  };
 }
 
 function sortByUpdatedAt(a: ShoppingList, b: ShoppingList) {

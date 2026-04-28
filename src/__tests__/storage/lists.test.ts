@@ -48,9 +48,17 @@ const mockedGetCurrentSession = jest.mocked(getCurrentSession);
 const mockedIsSignedIn = jest.mocked(isSignedIn);
 
 const list: ShoppingList = {
+  capabilities: {
+    canDelete: true,
+    canEdit: true,
+    canShare: true,
+    canShop: true,
+  },
   createdAt: "2026-01-01T00:00:00.000Z",
+  currentUserRole: "owner",
   id: "list-1",
   name: "Groceries",
+  ownerProfileId: "profile-owner",
   sections: [
     {
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -91,20 +99,31 @@ describe("lists storage API adapter", () => {
   });
 
   it("fetches full lists from summary endpoints", async () => {
+    const apiList: ShoppingList = {
+      ...list,
+      capabilities: {
+        canDelete: false,
+        canEdit: true,
+        canShare: false,
+        canShop: true,
+      },
+      currentUserRole: "collaborator",
+      ownerProfileId: "profile-owner",
+    };
     mockedApiRequest
       .mockResolvedValueOnce({ lists: [{ id: "list-1" }] })
-      .mockResolvedValueOnce({ list });
+      .mockResolvedValueOnce({ list: apiList });
 
-    await expect(getLists()).resolves.toEqual([list]);
+    await expect(getLists()).resolves.toEqual([apiList]);
 
     expect(mockedApiRequest).toHaveBeenNthCalledWith(1, "/lists");
     expect(mockedApiRequest).toHaveBeenNthCalledWith(2, "/lists/list-1");
 
     mockedApiRequest
       .mockResolvedValueOnce({ lists: [{ id: "list-1" }] })
-      .mockResolvedValueOnce({ list });
+      .mockResolvedValueOnce({ list: apiList });
 
-    await expect(getRecentLists(2)).resolves.toEqual([list]);
+    await expect(getRecentLists(2)).resolves.toEqual([apiList]);
     expect(mockedApiRequest).toHaveBeenNthCalledWith(
       3,
       "/lists/recent?limit=2",
@@ -240,7 +259,15 @@ describe("lists storage API adapter", () => {
     await expect(getLists()).resolves.toMatchObject([
       {
         id: created.id,
+        capabilities: {
+          canDelete: true,
+          canEdit: true,
+          canShare: true,
+          canShop: true,
+        },
+        currentUserRole: "guest",
         name: "Groceries",
+        ownerProfileId: null,
         sections: [
           {
             name: "Dairy",

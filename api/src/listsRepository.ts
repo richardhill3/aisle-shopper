@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type {
+  ListCapabilities,
   ListMember,
+  ListUserRole,
   ShoppingItem,
   ShoppingList,
   ShoppingListSummary,
@@ -14,6 +16,7 @@ import { forbidden, invalidRequest, notFound, unauthorized } from "./errors";
 type ListRow = {
   id: string;
   name: string;
+  owner_profile_id: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -53,12 +56,37 @@ function iso(value: Date) {
   return value.toISOString();
 }
 
-function mapSummary(row: ListSummaryRow): ShoppingListSummary {
+function listRole(row: Pick<ListRow, "owner_profile_id">, currentProfile?: CurrentProfile): ListUserRole {
+  if (!currentProfile) {
+    return "guest";
+  }
+
+  return row.owner_profile_id === currentProfile.id ? "owner" : "collaborator";
+}
+
+function capabilitiesForRole(role: ListUserRole): ListCapabilities {
+  return {
+    canDelete: role !== "collaborator",
+    canEdit: true,
+    canShare: role !== "collaborator",
+    canShop: true,
+  };
+}
+
+function mapSummary(
+  row: ListSummaryRow,
+  currentProfile?: CurrentProfile,
+): ShoppingListSummary {
+  const currentUserRole = listRole(row, currentProfile);
+
   return {
     id: row.id,
     name: row.name,
     sectionCount: Number(row.section_count),
     itemCount: Number(row.item_count),
+    ownerProfileId: row.owner_profile_id,
+    currentUserRole,
+    capabilities: capabilitiesForRole(currentUserRole),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -114,6 +142,7 @@ export async function listSummaries(
       SELECT
         lists.id,
         lists.name,
+        lists.owner_profile_id,
         lists.created_at,
         lists.updated_at,
         COUNT(DISTINCT sections.id) AS section_count,
@@ -129,7 +158,7 @@ export async function listSummaries(
     params,
   );
 
-  return rows.map(mapSummary);
+  return rows.map((row) => mapSummary(row, currentProfile));
 }
 
 export async function getList(
@@ -148,7 +177,7 @@ export async function getList(
     (
       await db.query<ListRow>(
         `
-          SELECT id, name, created_at, updated_at
+          SELECT id, name, owner_profile_id, created_at, updated_at
           FROM lists
           WHERE id = $1 ${accessWhere}
         `,
@@ -189,6 +218,8 @@ export async function getList(
           )
         ).rows;
 
+  const currentUserRole = listRole(list, currentProfile);
+
   return {
     id: list.id,
     name: list.name,
@@ -200,6 +231,9 @@ export async function getList(
           .map((item) => mapItem(item)),
       ),
     ),
+    ownerProfileId: list.owner_profile_id,
+    currentUserRole,
+    capabilities: capabilitiesForRole(currentUserRole),
     createdAt: iso(list.created_at),
     updatedAt: iso(list.updated_at),
   } satisfies ShoppingList;

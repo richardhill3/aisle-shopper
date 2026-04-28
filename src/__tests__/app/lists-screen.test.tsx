@@ -34,9 +34,17 @@ describe("ListsScreen", () => {
   it("renders saved lists", async () => {
     jest.mocked(getLists).mockResolvedValue([
       {
+        capabilities: {
+          canDelete: true,
+          canEdit: true,
+          canShare: true,
+          canShop: true,
+        },
         createdAt: "2026-01-01T00:00:00.000Z",
+        currentUserRole: "guest",
         id: "list-1",
         name: "Groceries",
+        ownerProfileId: null,
         sections: [],
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

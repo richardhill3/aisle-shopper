@@ -39,9 +39,17 @@ describe("CreateListScreen", () => {
 
   it("creates a list and navigates to detail", async () => {
     jest.mocked(createList).mockResolvedValue({
+      capabilities: {
+        canDelete: true,
+        canEdit: true,
+        canShare: true,
+        canShop: true,
+      },
       createdAt: "2026-01-01T00:00:00.000Z",
+      currentUserRole: "guest",
       id: "list-1",
       name: "Groceries",
+      ownerProfileId: null,
       sections: [],
       updatedAt: "2026-01-01T00:00:00.000Z",
     });

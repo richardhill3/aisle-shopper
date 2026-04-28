@@ -10,9 +10,17 @@ jest.mock("expo-router", () => ({
 }));
 
 const list: ShoppingList = {
+  capabilities: {
+    canDelete: true,
+    canEdit: true,
+    canShare: true,
+    canShop: true,
+  },
   createdAt: "2026-01-01T00:00:00.000Z",
+  currentUserRole: "owner",
   id: "list-1",
   name: "Weekly groceries",
+  ownerProfileId: "profile-owner",
   sections: [
     {
       createdAt: "2026-01-01T00:00:00.000Z",

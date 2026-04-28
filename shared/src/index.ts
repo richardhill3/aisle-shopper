@@ -18,10 +18,22 @@ export type ShoppingSection = {
   updatedAt: string;
 };
 
+export type ListUserRole = "guest" | "owner" | "collaborator";
+
+export type ListCapabilities = {
+  canEdit: boolean;
+  canShop: boolean;
+  canDelete: boolean;
+  canShare: boolean;
+};
+
 export type ShoppingList = {
   id: string;
   name: string;
   sections: ShoppingSection[];
+  ownerProfileId: string | null;
+  currentUserRole: ListUserRole;
+  capabilities: ListCapabilities;
   createdAt: string;
   updatedAt: string;
 };
@@ -31,6 +43,9 @@ export type ShoppingListSummary = {
   name: string;
   sectionCount: number;
   itemCount: number;
+  ownerProfileId: string | null;
+  currentUserRole: ListUserRole;
+  capabilities: ListCapabilities;
   createdAt: string;
   updatedAt: string;
 };
