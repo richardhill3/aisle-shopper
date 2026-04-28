@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { oneOrNull, pool } from "./db";
 import { unauthorized } from "./errors";
 
@@ -23,10 +24,23 @@ type ProfileRow = {
   display_name: string | null;
 };
 
+type SupabaseAuthConfig = {
+  anonKey: string;
+  url: string;
+};
+
+let supabaseAuthClient: SupabaseClient | null = null;
+let supabaseAuthClientConfigKey: string | null = null;
+
 declare module "express-serve-static-core" {
   interface Request {
     currentProfile?: CurrentProfile;
   }
+}
+
+export function resetSupabaseAuthClientForTests() {
+  supabaseAuthClient = null;
+  supabaseAuthClientConfigKey = null;
 }
 
 export async function resolveAuth(
@@ -35,7 +49,7 @@ export async function resolveAuth(
   next: NextFunction,
 ) {
   try {
-    const identity = resolveIdentity(request);
+    const identity = await resolveIdentity(request);
 
     if (identity) {
       request.currentProfile = await upsertProfile(identity);
@@ -47,7 +61,7 @@ export async function resolveAuth(
   }
 }
 
-function resolveIdentity(request: Request): AuthIdentity | null {
+async function resolveIdentity(request: Request): Promise<AuthIdentity | null> {
   const testIdentity = resolveTestIdentity(request);
 
   if (testIdentity) {
@@ -92,10 +106,24 @@ function resolveTestIdentity(request: Request): AuthIdentity | null {
   };
 }
 
-function resolveSupabaseJwt(token: string): AuthIdentity {
-  const payload = decodeJwtPayload(token);
-  const sub = stringClaim(payload.sub);
-  const email = stringClaim(payload.email);
+async function resolveSupabaseJwt(token: string): Promise<AuthIdentity> {
+  assertJwtShape(token);
+
+  const config = getSupabaseAuthConfig();
+  const { data, error } = await getVerifiedClaims(token, config);
+
+  if (error || !data?.claims) {
+    throw unauthorized("Invalid access token.");
+  }
+
+  const claims = data.claims as Record<string, unknown>;
+  const issuer = stringClaim(claims.iss);
+  const sub = stringClaim(claims.sub);
+  const email = stringClaim(claims.email);
+
+  if (issuer !== expectedIssuer(config.url)) {
+    throw unauthorized("Invalid access token.");
+  }
 
   if (!sub || !email) {
     throw unauthorized("Invalid access token.");
@@ -104,29 +132,18 @@ function resolveSupabaseJwt(token: string): AuthIdentity {
   return {
     supabaseUserId: sub,
     email,
-    displayName: displayNameClaim(payload),
+    displayName: displayNameClaim(claims),
   };
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> {
+function assertJwtShape(token: string) {
   const parts = token.split(".");
 
   if (parts.length !== 3) {
     throw unauthorized("Invalid access token.");
   }
 
-  try {
-    const json = Buffer.from(parts[1], "base64url").toString("utf8");
-    const payload = JSON.parse(json) as unknown;
-
-    if (!payload || typeof payload !== "object") {
-      throw new Error("JWT payload is not an object.");
-    }
-
-    return payload as Record<string, unknown>;
-  } catch {
-    throw unauthorized("Invalid access token.");
-  }
+  return parts;
 }
 
 function displayNameClaim(payload: Record<string, unknown>) {
@@ -142,6 +159,56 @@ function displayNameClaim(payload: Record<string, unknown>) {
 
 function stringClaim(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function getSupabaseAuthClient(config: SupabaseAuthConfig) {
+  const configKey = `${config.url}:${config.anonKey}`;
+
+  if (supabaseAuthClient && supabaseAuthClientConfigKey === configKey) {
+    return supabaseAuthClient;
+  }
+
+  supabaseAuthClient = createClient(config.url, config.anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+  supabaseAuthClientConfigKey = configKey;
+
+  return supabaseAuthClient;
+}
+
+async function getVerifiedClaims(token: string, config: SupabaseAuthConfig) {
+  try {
+    return await getSupabaseAuthClient(config).auth.getClaims(token);
+  } catch {
+    throw unauthorized("Invalid access token.");
+  }
+}
+
+function getSupabaseAuthConfig(): SupabaseAuthConfig {
+  const url =
+    process.env.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+    "";
+
+  if (!url || !anonKey) {
+    throw unauthorized("Supabase authentication is not configured.");
+  }
+
+  return {
+    anonKey,
+    url: url.replace(/\/$/, ""),
+  };
+}
+
+function expectedIssuer(supabaseUrl: string) {
+  return `${supabaseUrl}/auth/v1`;
 }
 
 async function upsertProfile(identity: AuthIdentity): Promise<CurrentProfile> {
