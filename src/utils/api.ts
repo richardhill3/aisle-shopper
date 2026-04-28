@@ -1,4 +1,5 @@
 import type { ApiErrorResponse } from "@shared";
+import { getAccessToken } from "@/utils/auth";
 
 const apiBaseUrl = (
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"
@@ -20,13 +21,17 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const accessToken = await getAccessToken();
+  const headers = {
+    Accept: "application/json",
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...normalizeHeaders(options.headers),
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+
   const response = await fetch(`${apiBaseUrl}/api/v1${path}`, {
     ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
+    headers,
   });
 
   if (response.status === 204) {
@@ -45,4 +50,20 @@ export async function apiRequest<T>(
   }
 
   return body as T;
+}
+
+function normalizeHeaders(headers?: HeadersInit) {
+  if (!headers) {
+    return {};
+  }
+
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+
+  return headers;
 }

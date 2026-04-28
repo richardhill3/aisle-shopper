@@ -8,6 +8,10 @@ jest.mock("@expo/vector-icons", () => {
   };
 });
 
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+);
+
 jest.mock("@/utils/theme", () => {
   const React = require("react");
   const {
