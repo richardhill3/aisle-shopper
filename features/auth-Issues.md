@@ -172,7 +172,7 @@ Keep import logic deterministic and idempotent. If bulk API endpoints are not in
 
 # Issue 5: Add Settings Account Section for Sign-In, Profile, and Sign-Out
 
-## Status Ready: Human-in-the-Loop
+## Status Completed: c72f97f feat: add account sign-in settings
 
 ## Type
 
@@ -343,7 +343,7 @@ Use profiles as the source of truth for share targets. Do not add pending invite
 
 # Issue 9: Surface Ownership Metadata to the App
 
-## Status Ready
+## Status Completed: aeda794 feat: surface list ownership metadata
 
 ## Type
 
@@ -427,7 +427,7 @@ Human review is needed for where the sharing entry point lives and how much coll
 
 # Issue 11: Add Deterministic Test Auth Bypass for E2E and API Cleanup
 
-## Status Ready
+## Status Completed: a9ed41a test: gate deterministic auth bypass
 
 ## Type
 
@@ -467,7 +467,7 @@ This should reuse the same normalized current-user path as Supabase JWT auth so 
 
 # Issue 12: Add Signed-In Import E2E Tracer
 
-## Status Blocked: waiting on Issues 5 and 11
+## Status Completed: 9ddac18 test: add signed-in import e2e tracer
 
 ## Type
 
