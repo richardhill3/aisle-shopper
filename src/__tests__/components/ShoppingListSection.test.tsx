@@ -73,6 +73,18 @@ describe("ShoppingListSection", () => {
     expect(props.onAddItem).toHaveBeenCalledWith("Yogurt");
   });
 
+  it("does not add duplicate items when submit is followed by blur", () => {
+    const props = renderSection();
+    const input = screen.getByPlaceholderText("Add item");
+
+    fireEvent.changeText(input, "Yogurt");
+    fireEvent(input, "submitEditing");
+    fireEvent(input, "blur");
+
+    expect(props.onAddItem).toHaveBeenCalledTimes(1);
+    expect(props.onAddItem).toHaveBeenCalledWith("Yogurt");
+  });
+
   it("confirms destructive actions and disables boundary move buttons", () => {
     const alertSpy = jest.spyOn(Alert, "alert");
     const props = renderSection();

@@ -2,7 +2,7 @@ import { ShoppingItem, ShoppingSection } from "@/storage/lists";
 import { ColorPalette } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -47,6 +47,7 @@ export default function ShoppingListSection({
   const styles = createStyles(colors);
   const [sectionName, setSectionName] = useState(section.name);
   const [newItemName, setNewItemName] = useState("");
+  const pendingAddItemName = useRef<string | null>(null);
   const completedCount = section.items.filter((item) => item.checked).length;
   const isComplete =
     section.items.length > 0 && completedCount === section.items.length;
@@ -75,8 +76,18 @@ export default function ShoppingListSection({
       return;
     }
 
+    if (pendingAddItemName.current === trimmedName) {
+      return;
+    }
+
+    pendingAddItemName.current = trimmedName;
     onAddItem(trimmedName);
     setNewItemName("");
+    setTimeout(() => {
+      if (pendingAddItemName.current === trimmedName) {
+        pendingAddItemName.current = null;
+      }
+    }, 0);
   }
 
   function confirmDeleteSection() {
