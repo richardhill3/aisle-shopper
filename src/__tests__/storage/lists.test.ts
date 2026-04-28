@@ -17,7 +17,7 @@ import {
   updateList,
 } from "../../storage/lists";
 import { ApiClientError, apiRequest } from "@/utils/api";
-import { isSignedIn } from "@/utils/auth";
+import { getCurrentSession, isSignedIn } from "@/utils/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 jest.mock("@/utils/api", () => {
@@ -39,10 +39,12 @@ jest.mock("@/utils/api", () => {
 });
 
 jest.mock("@/utils/auth", () => ({
+  getCurrentSession: jest.fn(),
   isSignedIn: jest.fn(),
 }));
 
 const mockedApiRequest = jest.mocked(apiRequest);
+const mockedGetCurrentSession = jest.mocked(getCurrentSession);
 const mockedIsSignedIn = jest.mocked(isSignedIn);
 
 const list: ShoppingList = {
@@ -76,6 +78,14 @@ const list: ShoppingList = {
 describe("lists storage API adapter", () => {
   beforeEach(() => {
     mockedApiRequest.mockReset();
+    mockedGetCurrentSession.mockResolvedValue({
+      access_token: "token-1",
+      expires_at: 1,
+      expires_in: 3600,
+      refresh_token: "refresh-token",
+      token_type: "bearer",
+      user: { id: "user-1" },
+    } as never);
     mockedIsSignedIn.mockResolvedValue(true);
     AsyncStorage.clear();
   });
@@ -275,6 +285,198 @@ describe("lists storage API adapter", () => {
         name: updated?.name,
         sections: [{ name: "Fruit and veg", position: 0 }],
       },
+    ]);
+  });
+
+  it("imports guest lists once for a signed-in user", async () => {
+    mockedIsSignedIn.mockResolvedValue(false);
+    const created = await createList("Weekend shop");
+    const withProduce = await addSection(created.id, "Produce");
+    const produceId = withProduce?.sections[0].id as string;
+    const withDairy = await addSection(created.id, "Dairy");
+    const dairyId = withDairy?.sections[1].id as string;
+    const withApples = await addItem(created.id, produceId, "Apples");
+    const applesId = withApples?.sections[0].items[0].id as string;
+    await addItem(created.id, dairyId, "Milk");
+    await toggleItemChecked(created.id, produceId, applesId);
+
+    const importedList: ShoppingList = {
+      ...list,
+      id: "api-list-1",
+      name: "Weekend shop",
+      sections: [],
+    };
+    const importedProduce = {
+      ...list.sections[0],
+      id: "api-section-produce",
+      items: [],
+      listId: "api-list-1",
+      name: "Produce",
+      position: 0,
+    };
+    const importedDairy = {
+      ...list.sections[0],
+      id: "api-section-dairy",
+      items: [],
+      listId: "api-list-1",
+      name: "Dairy",
+      position: 1,
+    };
+    const importedApples = {
+      ...list.sections[0].items[0],
+      checked: false,
+      id: "api-item-apples",
+      name: "Apples",
+      sectionId: "api-section-produce",
+    };
+    const importedMilk = {
+      ...list.sections[0].items[0],
+      id: "api-item-milk",
+      name: "Milk",
+      sectionId: "api-section-dairy",
+    };
+
+    mockedIsSignedIn.mockResolvedValue(true);
+    mockedApiRequest
+      .mockResolvedValueOnce({ list: importedList })
+      .mockResolvedValueOnce({
+        list: { ...importedList, sections: [importedProduce] },
+      })
+      .mockResolvedValueOnce({
+        list: {
+          ...importedList,
+          sections: [
+            { ...importedProduce, items: [importedApples] },
+            importedDairy,
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        list: {
+          ...importedList,
+          sections: [
+            {
+              ...importedProduce,
+              items: [{ ...importedApples, checked: true }],
+            },
+            importedDairy,
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        list: {
+          ...importedList,
+          sections: [
+            {
+              ...importedProduce,
+              items: [{ ...importedApples, checked: true }],
+            },
+            importedDairy,
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        list: {
+          ...importedList,
+          sections: [
+            {
+              ...importedProduce,
+              items: [{ ...importedApples, checked: true }],
+            },
+            { ...importedDairy, items: [importedMilk] },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({ lists: [{ id: "api-list-1" }] })
+      .mockResolvedValueOnce({
+        list: {
+          ...importedList,
+          sections: [
+            {
+              ...importedProduce,
+              items: [{ ...importedApples, checked: true }],
+            },
+            { ...importedDairy, items: [importedMilk] },
+          ],
+        },
+      });
+
+    await getLists();
+
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(1, "/lists", {
+      body: JSON.stringify({ name: "Weekend shop" }),
+      method: "POST",
+    });
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(
+      2,
+      "/lists/api-list-1/sections",
+      {
+        body: JSON.stringify({ name: "Produce" }),
+        method: "POST",
+      },
+    );
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(
+      3,
+      "/lists/api-list-1/sections/api-section-produce/items",
+      {
+        body: JSON.stringify({ name: "Apples" }),
+        method: "POST",
+      },
+    );
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(
+      4,
+      "/lists/api-list-1/sections/api-section-produce/items/api-item-apples",
+      {
+        body: JSON.stringify({ checked: true }),
+        method: "PATCH",
+      },
+    );
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(
+      5,
+      "/lists/api-list-1/sections",
+      {
+        body: JSON.stringify({ name: "Dairy" }),
+        method: "POST",
+      },
+    );
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(
+      6,
+      "/lists/api-list-1/sections/api-section-dairy/items",
+      {
+        body: JSON.stringify({ name: "Milk" }),
+        method: "POST",
+      },
+    );
+    await expect(
+      AsyncStorage.getItem("aisle-shopper:guest-imports:user-1"),
+    ).resolves.toBe("complete");
+
+    mockedApiRequest.mockClear();
+    mockedApiRequest
+      .mockResolvedValueOnce({ lists: [{ id: "api-list-1" }] })
+      .mockResolvedValueOnce({ list: importedList });
+
+    await getLists();
+
+    expect(mockedApiRequest).toHaveBeenCalledTimes(2);
+    expect(mockedApiRequest).toHaveBeenNthCalledWith(1, "/lists");
+  });
+
+  it("preserves guest lists and leaves import incomplete when import fails", async () => {
+    mockedIsSignedIn.mockResolvedValue(false);
+    const created = await createList("Retry later");
+
+    mockedIsSignedIn.mockResolvedValue(true);
+    mockedApiRequest.mockRejectedValueOnce(new Error("Network failed"));
+
+    await expect(getLists()).rejects.toThrow("Network failed");
+    await expect(
+      AsyncStorage.getItem("aisle-shopper:guest-imports:user-1"),
+    ).resolves.toBeNull();
+
+    mockedIsSignedIn.mockResolvedValue(false);
+    await expect(getLists()).resolves.toMatchObject([
+      { id: created.id, name: "Retry later" },
     ]);
   });
 });

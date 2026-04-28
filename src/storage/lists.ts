@@ -1,11 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ListResponse, ListsResponse, ShoppingList } from "@shared";
 import { ApiClientError, apiRequest } from "@/utils/api";
-import { isSignedIn } from "@/utils/auth";
+import { getCurrentSession, isSignedIn } from "@/utils/auth";
 
 export type { ShoppingItem, ShoppingList, ShoppingSection } from "@shared";
 
 const guestListsKey = "aisle-shopper:guest-lists";
+const guestImportKeyPrefix = "aisle-shopper:guest-imports:";
 
 export async function getLists(): Promise<ShoppingList[]> {
   if (await shouldUseApi()) {
@@ -365,7 +366,19 @@ export async function resetCheckedItems(
 
 async function shouldUseApi() {
   try {
-    return await isSignedIn();
+    if (!(await isSignedIn())) {
+      return false;
+    }
+
+    const session = await getCurrentSession();
+    const userId = session?.user.id;
+
+    if (!userId) {
+      return false;
+    }
+
+    await importGuestListsOnce(userId);
+    return true;
   } catch (error) {
     if (
       error instanceof Error &&
@@ -376,6 +389,97 @@ async function shouldUseApi() {
 
     throw error;
   }
+}
+
+async function importGuestListsOnce(userId: string) {
+  const importKey = `${guestImportKeyPrefix}${userId}`;
+
+  if ((await AsyncStorage.getItem(importKey)) === "complete") {
+    return;
+  }
+
+  const guestLists = await readGuestLists();
+
+  if (guestLists.length === 0) {
+    return;
+  }
+
+  for (const guestList of guestLists) {
+    await importGuestList(guestList);
+  }
+
+  await AsyncStorage.setItem(importKey, "complete");
+}
+
+async function importGuestList(guestList: ShoppingList) {
+  const { list: importedList } = await apiRequest<ListResponse>("/lists", {
+    body: JSON.stringify({ name: guestList.name }),
+    method: "POST",
+  });
+
+  for (const guestSection of [...guestList.sections].sort(sortByPosition)) {
+    const { list: listWithSection } = await apiRequest<ListResponse>(
+      `/lists/${importedList.id}/sections`,
+      {
+        body: JSON.stringify({ name: guestSection.name }),
+        method: "POST",
+      },
+    );
+    const importedSection = findNewestSection(
+      listWithSection,
+      guestSection.name,
+    );
+
+    for (const guestItem of [...guestSection.items].sort(sortByPosition)) {
+      const { list: listWithItem } = await apiRequest<ListResponse>(
+        `/lists/${importedList.id}/sections/${importedSection.id}/items`,
+        {
+          body: JSON.stringify({ name: guestItem.name }),
+          method: "POST",
+        },
+      );
+
+      if (guestItem.checked) {
+        const importedItem = findNewestItem(
+          listWithItem,
+          importedSection.id,
+          guestItem.name,
+        );
+        await apiRequest<ListResponse>(
+          `/lists/${importedList.id}/sections/${importedSection.id}/items/${importedItem.id}`,
+          {
+            body: JSON.stringify({ checked: true }),
+            method: "PATCH",
+          },
+        );
+      }
+    }
+  }
+}
+
+function findNewestSection(list: ShoppingList, name: string) {
+  const section = [...list.sections]
+    .reverse()
+    .find((candidate) => candidate.name === name);
+
+  if (!section) {
+    throw new Error("Imported section not found.");
+  }
+
+  return section;
+}
+
+function findNewestItem(list: ShoppingList, sectionId: string, name: string) {
+  const section = list.sections.find((candidate) => candidate.id === sectionId);
+  const item = [...(section?.items ?? [])]
+    .reverse()
+    .find((candidate) => candidate.name === name);
+
+  if (!item) {
+    throw new Error("Imported item not found.");
+  }
+
+  return item;
 }
 
 async function getRequiredList(id: string): Promise<ShoppingList> {
@@ -463,6 +567,15 @@ function cloneList(list: ShoppingList): ShoppingList {
 
 function sortByUpdatedAt(a: ShoppingList, b: ShoppingList) {
   return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+}
+
+function sortByPosition(
+  a: { position: number; createdAt: string },
+  b: { position: number; createdAt: string },
+) {
+  return (
+    a.position - b.position || Date.parse(a.createdAt) - Date.parse(b.createdAt)
+  );
 }
 
 function createId() {

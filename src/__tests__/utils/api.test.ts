@@ -7,6 +7,9 @@ jest.mock("@/utils/auth", () => ({
 
 const mockedGetAccessToken = jest.mocked(getAccessToken);
 const mockedFetch = jest.fn();
+const expectedApiBaseUrl = (
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"
+).replace(/\/$/, "");
 
 describe("apiRequest", () => {
   beforeEach(() => {
@@ -28,7 +31,7 @@ describe("apiRequest", () => {
     });
 
     expect(mockedFetch).toHaveBeenCalledWith(
-      "http://localhost:3000/api/v1/lists",
+      `${expectedApiBaseUrl}/api/v1/lists`,
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: "application/json",
@@ -53,7 +56,7 @@ describe("apiRequest", () => {
     });
 
     expect(mockedFetch).toHaveBeenCalledWith(
-      "http://localhost:3000/api/v1/lists",
+      `${expectedApiBaseUrl}/api/v1/lists`,
       expect.objectContaining({
         headers: expect.not.objectContaining({
           Authorization: expect.any(String),
