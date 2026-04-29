@@ -517,7 +517,7 @@ Keep this as a thin user journey, not a full auth suite. Deeper permission cover
 
 # Issue 13: Add Sharing Collaboration E2E Tracer
 
-## Status Blocked: waiting on Issues 10 and 11
+## Status Completed
 
 ## Type
 
@@ -555,6 +555,14 @@ Prove that an owner can share a list with an existing user and that the collabor
 ## Notes
 
 Prefer testing one representative edit/shop action in e2e and leave exhaustive route permission combinations to API tests.
+
+## Completion Notes
+
+- Added a Playwright tracer for owner-to-collaborator sharing using deterministic test identities.
+- Seeded the collaborator profile through the authenticated `/me` API before sharing by email through the owner UI.
+- Verified the collaborator can open the shared list, add an item, shop/check it off, and does not see sharing or delete controls.
+- Extended E2E cleanup to isolate both owner and collaborator identities.
+- Verified with `npm run test:e2e`, `npm run lint`, and `npm run typecheck`.
 
 # Issue 14: Harden Auth Configuration and Manual QA Documentation
 
