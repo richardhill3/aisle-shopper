@@ -4,6 +4,14 @@ Generated from `features/cleanarch-PRD.md` after reviewing the current Express A
 
 # Issue 1: Add Clean Architecture Boundary Skeleton and Guardrails
 
+## Status
+
+Done
+
+## Commit
+
+324ca6b - chore: add clean architecture guardrails
+
 ## Type
 
 AFK
