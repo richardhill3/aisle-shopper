@@ -106,3 +106,69 @@ jobs:
         with:
           name: playwright-results
           path: test-results
+
+  tests:
+    runs-on: ubuntu-latest
+    needs:
+      - static
+      - api-tests
+      - app-tests
+      - e2e
+    steps:
+      - run: echo "All required checks passed."
+
+  api-image:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API Docker image
+        run: docker build -f api/Dockerfile -t aisle-shopper-api:${{ github.sha }} .
+      - name: Save API Docker image artifact
+        run: |
+          mkdir -p artifacts
+          docker save aisle-shopper-api:${{ github.sha }} -o artifacts/aisle-shopper-api.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aisle-shopper-api-image
+          path: artifacts/aisle-shopper-api.tar
+
+  android-apk:
+    runs-on: ubuntu-latest
+    needs: tests
+    environment: preview
+    env:
+      EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL || vars.EXPO_PUBLIC_SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Validate APK build environment
+        run: |
+          missing=0
+          for name in EXPO_PUBLIC_API_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_SUPABASE_URL; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for the APK build. Set it as a repository secret or variable."
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --non-interactive --clean
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aisle-shopper-apk
+          path: android/app/build/outputs/apk/debug/*.apk
