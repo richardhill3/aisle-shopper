@@ -606,6 +606,14 @@ Document required Supabase/Google OAuth configuration and validate real sign-in 
 
 This issue intentionally stays human-in-the-loop because OAuth provider configuration and redirect behavior often differ between web and native environments.
 
+## Progress Notes
+
+- Added root setup documentation for Expo env vars, Supabase Google provider setup, redirect URIs, local API/app commands, e2e auth flow, production-safety checks, and manual QA scenarios.
+- Added `.env.example` for Expo public auth/API configuration plus clearly commented test-only bypass variables.
+- Expanded `api/README.md` with API env vars, Supabase JWT verification behavior, deterministic test auth headers, schema command, and e2e test flow.
+- Expanded `api/.env.example` with Supabase auth verification variables and a commented non-production test bypass flag.
+- Manual QA with real Google OAuth on web/native, sign-out/sign-in, cross-session access, and real-account sharing remains to be executed by a human with configured Supabase/Google credentials and target devices.
+
 # Final Review
 
 - The first implementation slices are tracer bullets: Issue 1 proves authenticated ownership through schema + API + repository + tests, while Issues 2 and 3 prove app-side auth/token routing and guest/signed-in data routing through existing screens.
