@@ -383,7 +383,7 @@ Prefer capability flags if they simplify UI conditions and keep screens from dup
 
 # Issue 10: Add List Sharing UI for Owners
 
-## Status Completed
+## Status Completed: 8e8b068 feat: add owner list sharing UI
 
 ## Type
 
@@ -517,7 +517,7 @@ Keep this as a thin user journey, not a full auth suite. Deeper permission cover
 
 # Issue 13: Add Sharing Collaboration E2E Tracer
 
-## Status Completed
+## Status Completed: 553a242 test: add sharing collaboration e2e tracer
 
 ## Type
 
@@ -566,7 +566,7 @@ Prefer testing one representative edit/shop action in e2e and leave exhaustive r
 
 # Issue 14: Harden Auth Configuration and Manual QA Documentation
 
-## Status Blocked: waiting on Issues 5, 10, and 11
+## Status Ready: dependencies complete
 
 ## Type
 
