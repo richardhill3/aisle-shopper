@@ -14,6 +14,8 @@ import SettingsScreen from "../../app/settings";
 jest.mock("expo-router", () => ({
   router: {
     back: jest.fn(),
+    canGoBack: jest.fn(),
+    replace: jest.fn(),
   },
   useFocusEffect: jest.fn(),
 }));
@@ -35,6 +37,7 @@ const mockedSignOut = jest.mocked(signOut);
 const mockedFetchCurrentProfile = jest.mocked(fetchCurrentProfile);
 const mockedUpdateCurrentProfile = jest.mocked(updateCurrentProfile);
 const mockedUseFocusEffect = jest.mocked(useFocusEffect);
+const mockedCanGoBack = jest.mocked(router.canGoBack);
 
 const signedInSession = {
   access_token: "token-1",
@@ -57,6 +60,7 @@ const profile = {
 describe("SettingsScreen account section", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedCanGoBack.mockReturnValue(true);
     mockedUseFocusEffect.mockImplementation((callback: () => void) => {
       useEffect(callback, [callback]);
     });
@@ -164,5 +168,21 @@ describe("SettingsScreen account section", () => {
     fireEvent.press(screen.getByLabelText("Go back"));
 
     expect(router.back).toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it("falls back to home when settings has no back history", async () => {
+    mockedGetCurrentSession.mockResolvedValue(null);
+    mockedCanGoBack.mockReturnValue(false);
+
+    render(<SettingsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sign in with Google")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Go back"));
+
+    expect(router.back).not.toHaveBeenCalled();
+    expect(router.replace).toHaveBeenCalledWith("/");
   });
 });

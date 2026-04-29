@@ -20,7 +20,7 @@ export default function AuthCallbackScreen() {
 
     async function finishSignIn() {
       try {
-        if (Platform.OS === "web") {
+        if (Platform.OS === "web" && !callbackUrl) {
           WebBrowser.maybeCompleteAuthSession();
         } else if (callbackUrl) {
           await handleAuthRedirect(callbackUrl);

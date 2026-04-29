@@ -7,6 +7,7 @@ import {
 } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
 let supabaseClient: SupabaseClient | null = null;
 const testAuthKey = "aisle-shopper:test-auth";
@@ -100,6 +101,11 @@ export async function signInWithGoogle(): Promise<void> {
 
   if (!data.url) {
     throw new Error("Google sign-in did not return a redirect URL.");
+  }
+
+  if (Platform.OS === "web") {
+    redirectBrowserTo(data.url);
+    return;
   }
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
@@ -200,8 +206,20 @@ function getSupabaseClient() {
 }
 
 function getAuthRedirectUrl() {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return `${window.location.origin}/auth/callback`;
+  }
+
   return (
     process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL ??
     Linking.createURL("auth/callback")
   );
+}
+
+function redirectBrowserTo(url: string) {
+  if (typeof window === "undefined") {
+    throw new Error("Browser sign-in is only available in a web environment.");
+  }
+
+  window.location.assign(url);
 }

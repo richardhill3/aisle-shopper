@@ -117,6 +117,15 @@ export default function SettingsScreen() {
     }
   }
 
+  function handleGoBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/");
+  }
+
   return (
     <ScrollView
       contentContainerStyle={[
@@ -133,7 +142,7 @@ export default function SettingsScreen() {
         <TouchableOpacity
           accessibilityLabel="Go back"
           accessibilityRole="button"
-          onPress={() => router.back()}
+          onPress={handleGoBack}
           style={styles.iconButton}
         >
           <Ionicons name="chevron-back" size={22} color={colors.text} />
