@@ -165,10 +165,21 @@ jobs:
           exit "$missing"
       - name: Generate Android project
         run: npx expo prebuild --platform android --non-interactive --clean
-      - name: Build APK
+      - name: Build standalone APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Verify APK contains bundled JavaScript
+        run: |
+          apk="$(find android/app/build/outputs/apk/release -name '*.apk' -print -quit)"
+          if [ -z "$apk" ]; then
+            echo "::error::Release APK was not created."
+            exit 1
+          fi
+          if ! unzip -l "$apk" | grep -q 'assets/index.android.bundle'; then
+            echo "::error::Release APK is missing assets/index.android.bundle."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: aisle-shopper-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
