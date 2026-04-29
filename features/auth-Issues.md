@@ -383,7 +383,7 @@ Prefer capability flags if they simplify UI conditions and keep screens from dup
 
 # Issue 10: Add List Sharing UI for Owners
 
-## Status Blocked: waiting on Issues 8 and 9
+## Status Completed
 
 ## Type
 
@@ -424,6 +424,17 @@ Expose a list-level sharing experience that allows owners to manage collaborator
 ## Notes
 
 Human review is needed for where the sharing entry point lives and how much collaborator information to expose in the list detail UI.
+
+## Completion Notes
+
+- Added owner-only sharing management on the list detail screen.
+- Added `ListSharingSection` for collaborator listing, add-by-email, removal, loading states, and API error messaging.
+- Added storage facade helpers for list member API routes so screens/components do not call API helpers directly.
+- Hid sharing and list deletion controls from collaborators while preserving edit/shop controls.
+- Added a web-compatible collaborator removal confirmation because React Native `Alert.alert` does not provide a usable confirmation flow on web.
+- Added storage, component, and list-detail screen tests for sharing behavior and owner/collaborator capability rendering.
+- Manual QA completed with two accounts for owner add/remove collaborator and collaborator hidden owner controls.
+- Verified with `npm run test:app`, `npm run lint`, and `npm run typecheck`.
 
 # Issue 11: Add Deterministic Test Auth Bypass for E2E and API Cleanup
 

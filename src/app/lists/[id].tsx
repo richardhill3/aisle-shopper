@@ -1,20 +1,27 @@
 import ListModeToggle, { ListMode } from "@/components/ListModeToggle";
+import ListSharingSection from "@/components/ListSharingSection";
 import ShoppingListSection from "@/components/ShoppingListSection";
 import {
+  addListMember,
   addItem,
   addSection,
   deleteItem,
   deleteList,
   deleteSection,
   getList,
+  getListMembers,
   moveSection,
   renameItem,
   renameSection,
+  removeListMember,
   resetCheckedItems,
-  ShoppingList,
-  ShoppingSection,
   toggleItemChecked,
   updateList,
+} from "@/storage/lists";
+import type {
+  ListMember,
+  ShoppingList,
+  ShoppingSection,
 } from "@/storage/lists";
 import { ColorPalette } from "@/styles/global";
 import { useTheme } from "@/utils/theme";
@@ -43,6 +50,7 @@ export default function ListDetailScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const sectionPositions = useRef<Record<string, number>>({});
   const [list, setList] = useState<ShoppingList | null>(null);
+  const [members, setMembers] = useState<ListMember[]>([]);
   const [mode, setMode] = useState<ListMode>("edit");
   const [listName, setListName] = useState("");
   const [newSectionName, setNewSectionName] = useState("");
@@ -56,10 +64,16 @@ export default function ListDetailScreen() {
 
       async function loadList() {
         const savedList = await getList(id);
+        const savedMembers =
+          savedList?.currentUserRole === "owner" &&
+          savedList.capabilities.canShare
+            ? await getListMembers(id)
+            : [];
 
         if (isActive) {
           setList(savedList);
           setListName(savedList?.name ?? "");
+          setMembers(savedMembers);
         }
       }
 
@@ -182,6 +196,20 @@ export default function ListDetailScreen() {
     setCollapsedSections({});
   }
 
+  async function refreshMembers() {
+    setMembers(await getListMembers(id));
+  }
+
+  async function handleAddMember(email: string) {
+    await addListMember(id, email);
+    await refreshMembers();
+  }
+
+  async function handleRemoveMember(profileId: string) {
+    await removeListMember(id, profileId);
+    await refreshMembers();
+  }
+
   function confirmDeleteList() {
     if (!list) {
       return;
@@ -246,6 +274,10 @@ export default function ListDetailScreen() {
     );
   }
 
+  const canDeleteList = list.capabilities.canDelete;
+  const canManageSharing =
+    list.currentUserRole === "owner" && list.capabilities.canShare;
+
   return (
     <KeyboardAvoidingView behavior="padding" style={styles.container}>
       <ScrollView
@@ -275,14 +307,16 @@ export default function ListDetailScreen() {
               color={colors.text}
             />
           </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityLabel="Delete list"
-            accessibilityRole="button"
-            onPress={confirmDeleteList}
-            style={styles.iconButton}
-          >
-            <Ionicons name="trash-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
+          {canDeleteList ? (
+            <TouchableOpacity
+              accessibilityLabel="Delete list"
+              accessibilityRole="button"
+              onPress={confirmDeleteList}
+              style={styles.iconButton}
+            >
+              <Ionicons name="trash-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {mode === "edit" ? (
@@ -299,6 +333,14 @@ export default function ListDetailScreen() {
         )}
 
         <ListModeToggle mode={mode} onChangeMode={setMode} />
+
+        {canManageSharing ? (
+          <ListSharingSection
+            members={members}
+            onAddMember={handleAddMember}
+            onRemoveMember={handleRemoveMember}
+          />
+        ) : null}
 
         {mode === "shop" && (
           <TouchableOpacity

@@ -1,5 +1,6 @@
 import type { ShoppingList } from "@shared";
 import {
+  addListMember,
   addItem,
   addSection,
   createList,
@@ -7,9 +8,11 @@ import {
   deleteList,
   deleteSection,
   getList,
+  getListMembers,
   getLists,
   getRecentLists,
   moveSection,
+  removeListMember,
   renameItem,
   renameSection,
   resetCheckedItems,
@@ -149,6 +152,36 @@ describe("lists storage API adapter", () => {
     expect(mockedApiRequest).toHaveBeenCalledWith("/lists/list-1", {
       method: "DELETE",
     });
+  });
+
+  it("maps list member calls", async () => {
+    const member = {
+      createdAt: "2026-01-01T00:00:00.000Z",
+      displayName: "Morgan",
+      email: "morgan@example.com",
+      id: "profile-member",
+    };
+    mockedApiRequest
+      .mockResolvedValueOnce({ members: [member] })
+      .mockResolvedValueOnce({ member })
+      .mockResolvedValueOnce(undefined);
+
+    await expect(getListMembers("list-1")).resolves.toEqual([member]);
+    expect(mockedApiRequest).toHaveBeenCalledWith("/lists/list-1/members");
+
+    await expect(
+      addListMember("list-1", " Morgan@Example.com "),
+    ).resolves.toEqual(member);
+    expect(mockedApiRequest).toHaveBeenCalledWith("/lists/list-1/members", {
+      body: JSON.stringify({ email: "morgan@example.com" }),
+      method: "POST",
+    });
+
+    await removeListMember("list-1", "profile-member");
+    expect(mockedApiRequest).toHaveBeenCalledWith(
+      "/lists/list-1/members/profile-member",
+      { method: "DELETE" },
+    );
   });
 
   it("maps section and item mutations", async () => {

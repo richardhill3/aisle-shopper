@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
+  AddListMemberRequest,
   ListCapabilities,
+  ListMember,
+  ListMemberResponse,
+  ListMembersResponse,
   ListResponse,
   ListsResponse,
   ShoppingList,
@@ -9,6 +13,7 @@ import { ApiClientError, apiRequest } from "@/utils/api";
 import { getCurrentSession, isSignedIn } from "@/utils/auth";
 
 export type { ShoppingItem, ShoppingList, ShoppingSection } from "@shared";
+export type { ListMember } from "@shared";
 
 const guestListsKey = "aisle-shopper:guest-lists";
 const guestImportKeyPrefix = "aisle-shopper:guest-imports:";
@@ -109,6 +114,37 @@ export async function deleteList(id: string): Promise<void> {
   await writeGuestLists(
     (await readGuestLists()).filter((list) => list.id !== id),
   );
+}
+
+export async function getListMembers(listId: string): Promise<ListMember[]> {
+  const { members } = await apiRequest<ListMembersResponse>(
+    `/lists/${listId}/members`,
+  );
+  return members;
+}
+
+export async function addListMember(
+  listId: string,
+  email: string,
+): Promise<ListMember> {
+  const request: AddListMemberRequest = { email: email.trim().toLowerCase() };
+  const { member } = await apiRequest<ListMemberResponse>(
+    `/lists/${listId}/members`,
+    {
+      body: JSON.stringify(request),
+      method: "POST",
+    },
+  );
+  return member;
+}
+
+export async function removeListMember(
+  listId: string,
+  profileId: string,
+): Promise<void> {
+  await apiRequest<void>(`/lists/${listId}/members/${profileId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function addSection(
