@@ -1,0 +1,14 @@
+node_modules
+.expo
+.git
+.github
+android
+ios
+coverage
+dist-e2e
+test-results
+playwright-report
+api/dist
+api/.env
+.env
+*.log
