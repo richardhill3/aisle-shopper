@@ -528,6 +528,14 @@ This issue should keep SQL in infrastructure and not introduce generic ordering 
 
 # Issue 12: Migrate Item and Shopping-State Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+664bc21 - feat: migrate item use cases
+
 ## Type
 
 AFK
