@@ -88,4 +88,24 @@ describe("clean architecture boundaries", () => {
 
     expect(violations).toEqual([]);
   });
+
+  it("keeps migrated list-sharing routes off the legacy list repository", () => {
+    const routesSource = readFileSync(join(srcRoot, "routes.ts"), "utf8");
+    const legacyRepositoryImport =
+      routesSource.match(/import\s+\{(?<imports>[\s\S]*?)\}\s+from\s+["']\.\/listsRepository["']/)
+        ?.groups?.imports ?? "";
+    const forbiddenLegacySharingImports = [
+      "addListMember",
+      "listMembers",
+      "removeListMember",
+    ];
+    const violations = forbiddenLegacySharingImports.filter((exportName) =>
+      legacyRepositoryImport
+        .split(",")
+        .map((importName) => importName.trim())
+        .includes(exportName),
+    );
+
+    expect(violations).toEqual([]);
+  });
 });
