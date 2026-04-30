@@ -147,6 +147,14 @@ Do not wire Express routes yet unless the infrastructure adapter also exists. Th
 
 # Issue 4: Implement Postgres Adapters for List Sharing
 
+## Status
+
+Done
+
+## Commit
+
+a3e9e9b - feat: add postgres list sharing adapter
+
 ## Type
 
 AFK
