@@ -1,29 +1,22 @@
 import { Router } from "express";
 import type {
   CreateItemRequest,
-  CreateSectionRequest,
-  MoveSectionRequest,
   UpdateItemRequest,
-  UpdateSectionRequest,
 } from "../../shared/src";
 import {
   addItem,
-  addSection,
   deleteItem,
-  deleteSection,
-  moveSection,
   resetCheckedItems,
   updateItem,
-  updateSection,
 } from "./listsRepository";
 import { invalidRequest } from "./errors";
 import { listReadController } from "./main/listRead";
 import { listSharingController } from "./main/listSharing";
 import { listWriteController } from "./main/listWrite";
 import { profileController } from "./main/profile";
+import { sectionController } from "./main/section";
 import {
   booleanValue,
-  direction,
   optionalName,
   requiredName,
 } from "./validation";
@@ -76,70 +69,27 @@ apiRouter.delete("/lists/:listId", async (request, response, next) => {
 });
 
 apiRouter.post("/lists/:listId/sections", async (request, response, next) => {
-  try {
-    const body = request.body as Partial<CreateSectionRequest>;
-    const name = requiredName(body.name, "Aisle name");
-    response.status(201).json({
-      list: await addSection(request.params.listId, name, request.currentProfile),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await sectionController.addSection(request, response, next);
 });
 
 apiRouter.patch(
   "/lists/:listId/sections/:sectionId",
   async (request, response, next) => {
-    try {
-      const body = request.body as Partial<UpdateSectionRequest>;
-      const name = requiredName(body.name, "Aisle name");
-      response.json({
-        list: await updateSection(
-          request.params.listId,
-          request.params.sectionId,
-          name,
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await sectionController.updateSection(request, response, next);
   },
 );
 
 apiRouter.delete(
   "/lists/:listId/sections/:sectionId",
   async (request, response, next) => {
-    try {
-      response.json({
-        list: await deleteSection(
-          request.params.listId,
-          request.params.sectionId,
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await sectionController.deleteSection(request, response, next);
   },
 );
 
 apiRouter.patch(
   "/lists/:listId/sections/:sectionId/position",
   async (request, response, next) => {
-    try {
-      const body = request.body as Partial<MoveSectionRequest>;
-      response.json({
-        list: await moveSection(
-          request.params.listId,
-          request.params.sectionId,
-          direction(body.direction),
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await sectionController.moveSection(request, response, next);
   },
 );
 

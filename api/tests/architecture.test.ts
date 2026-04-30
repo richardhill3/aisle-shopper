@@ -141,6 +141,27 @@ describe("clean architecture boundaries", () => {
     expect(violations).toEqual([]);
   });
 
+  it("keeps migrated section routes off the legacy list repository", () => {
+    const routesSource = readFileSync(join(srcRoot, "routes.ts"), "utf8");
+    const legacyRepositoryImport =
+      routesSource.match(/import\s+\{(?<imports>[\s\S]*?)\}\s+from\s+["']\.\/listsRepository["']/)
+        ?.groups?.imports ?? "";
+    const forbiddenLegacySectionImports = [
+      "addSection",
+      "updateSection",
+      "deleteSection",
+      "moveSection",
+    ];
+    const violations = forbiddenLegacySectionImports.filter((exportName) =>
+      legacyRepositoryImport
+        .split(",")
+        .map((importName) => importName.trim())
+        .includes(exportName),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   it("keeps legacy list repository free of migrated sharing exports", () => {
     const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
     const forbiddenLegacySharingExports = [
@@ -149,6 +170,21 @@ describe("clean architecture boundaries", () => {
       "export async function removeListMember",
     ];
     const violations = forbiddenLegacySharingExports.filter((exportSignature) =>
+      repositorySource.includes(exportSignature),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps legacy list repository free of migrated section exports", () => {
+    const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
+    const forbiddenLegacySectionExports = [
+      "export async function addSection",
+      "export async function updateSection",
+      "export async function deleteSection",
+      "export async function moveSection",
+    ];
+    const violations = forbiddenLegacySectionExports.filter((exportSignature) =>
       repositorySource.includes(exportSignature),
     );
 
