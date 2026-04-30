@@ -50,6 +50,14 @@ Keep this intentionally small. This issue should not move all existing code or c
 
 # Issue 2: Extract List Sharing Domain Policy
 
+## Status
+
+Done
+
+## Commit
+
+8c3ddde - feat: extract list sharing domain policy
+
 ## Type
 
 AFK
