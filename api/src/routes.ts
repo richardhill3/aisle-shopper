@@ -1,25 +1,10 @@
 import { Router } from "express";
-import type {
-  CreateItemRequest,
-  UpdateItemRequest,
-} from "../../shared/src";
-import {
-  addItem,
-  deleteItem,
-  resetCheckedItems,
-  updateItem,
-} from "./listsRepository";
-import { invalidRequest } from "./errors";
+import { itemController } from "./main/item";
 import { listReadController } from "./main/listRead";
 import { listSharingController } from "./main/listSharing";
 import { listWriteController } from "./main/listWrite";
 import { profileController } from "./main/profile";
 import { sectionController } from "./main/section";
-import {
-  booleanValue,
-  optionalName,
-  requiredName,
-} from "./validation";
 
 export const apiRouter = Router();
 
@@ -96,80 +81,27 @@ apiRouter.patch(
 apiRouter.post(
   "/lists/:listId/sections/:sectionId/items",
   async (request, response, next) => {
-    try {
-      const body = request.body as Partial<CreateItemRequest>;
-      const name = requiredName(body.name, "Item name");
-      response.status(201).json({
-        list: await addItem(
-          request.params.listId,
-          request.params.sectionId,
-          name,
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await itemController.addItem(request, response, next);
   },
 );
 
 apiRouter.patch(
   "/lists/:listId/sections/:sectionId/items/:itemId",
   async (request, response, next) => {
-    try {
-      const body = request.body as Partial<UpdateItemRequest>;
-      const name = optionalName(body.name, "Item name");
-      const checked = booleanValue(body.checked, "Checked");
-
-      if (name === undefined && checked === undefined) {
-        throw invalidRequest("At least one item field is required.");
-      }
-
-      response.json({
-        list: await updateItem(
-          request.params.listId,
-          request.params.sectionId,
-          request.params.itemId,
-          { checked, name },
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await itemController.updateItem(request, response, next);
   },
 );
 
 apiRouter.delete(
   "/lists/:listId/sections/:sectionId/items/:itemId",
   async (request, response, next) => {
-    try {
-      response.json({
-        list: await deleteItem(
-          request.params.listId,
-          request.params.sectionId,
-          request.params.itemId,
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await itemController.deleteItem(request, response, next);
   },
 );
 
 apiRouter.post(
   "/lists/:listId/items/reset-checked",
   async (request, response, next) => {
-    try {
-      response.json({
-        list: await resetCheckedItems(
-          request.params.listId,
-          request.currentProfile,
-        ),
-      });
-    } catch (error) {
-      next(error);
-    }
+    await itemController.resetCheckedItems(request, response, next);
   },
 );
