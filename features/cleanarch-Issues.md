@@ -338,6 +338,14 @@ This can run after the boundary skeleton without waiting for the list-sharing pi
 
 # Issue 8: Split Auth Verification from Express Middleware
 
+## Status
+
+Done
+
+## Commit
+
+f7153fa - feat: split auth verification use case
+
 ## Type
 
 AFK
