@@ -49,6 +49,37 @@ x-test-auth-display-name: E2E Owner
 
 This path requires `API_ENABLE_TEST_AUTH_BYPASS=true` and is rejected when `NODE_ENV=production`. Never set `API_ENABLE_TEST_AUTH_BYPASS` in production or in a shared deployed API used by real users.
 
+## Backend Architecture
+
+New backend code should move toward a small clean architecture shape while
+preserving the current API behavior during migration.
+
+- `api/src/domain`: pure business types, policies, and domain errors. This layer
+  must not import Express, Postgres, Supabase, environment config, infrastructure,
+  presentation, main composition, or shared HTTP DTO contracts.
+- `api/src/application`: use cases and ports that coordinate domain behavior.
+  This layer may import domain code, but must not import Express, Postgres,
+  Supabase, environment config, infrastructure, presentation, main composition,
+  or shared HTTP DTO contracts.
+- `api/src/infrastructure`: adapters for external systems such as Postgres and
+  Supabase. This layer implements application ports and may depend on domain and
+  application types.
+- `api/src/presentation`: HTTP controllers, request validation, response DTO
+  mapping, and error mapping. This layer may depend on application use cases and
+  shared API contracts.
+- `api/src/main`: hand-written composition that wires controllers, use cases,
+  repositories, gateways, and other adapters together.
+
+Dependency direction should point inward: `main -> presentation ->
+application -> domain`, with infrastructure plugged into application ports by
+the composition root. Existing legacy modules remain in place until a vertical
+slice is migrated.
+
+The API test suite includes an import-boundary check for domain and application
+files. If a new use case needs database, Supabase, Express, or shared DTO access,
+define a narrow port in application and implement it in infrastructure or map it
+in presentation instead.
+
 ## Local Test Flow
 
 Run API tests:
@@ -64,4 +95,3 @@ npm run test:e2e
 ```
 
 Playwright starts the API with `API_ENABLE_TEST_AUTH_BYPASS=true`, applies deterministic test identities through request headers, and serves an Expo web export with the matching Expo test bypass enabled.
-

@@ -4,6 +4,14 @@ Generated from `features/cleanarch-PRD.md` after reviewing the current Express A
 
 # Issue 1: Add Clean Architecture Boundary Skeleton and Guardrails
 
+## Status
+
+Done
+
+## Commit
+
+324ca6b - chore: add clean architecture guardrails
+
 ## Type
 
 AFK
@@ -41,6 +49,14 @@ Create the minimum clean-layer structure and conventions needed for vertical mig
 Keep this intentionally small. This issue should not move all existing code or create broad repository interfaces before a migrated use case needs them.
 
 # Issue 2: Extract List Sharing Domain Policy
+
+## Status
+
+Done
+
+## Commit
+
+8c3ddde - feat: extract list sharing domain policy
 
 ## Type
 
@@ -85,6 +101,14 @@ This is a pure extraction issue. Do not touch SQL or route wiring except for tes
 
 # Issue 3: Add List Sharing Use Cases with Fake Repository Tests
 
+## Status
+
+Done
+
+## Commit
+
+a7682ce - feat: add list sharing use cases
+
 ## Type
 
 AFK
@@ -122,6 +146,14 @@ Introduce application-level list-sharing use cases that coordinate domain policy
 Do not wire Express routes yet unless the infrastructure adapter also exists. This issue proves the application seam independently.
 
 # Issue 4: Implement Postgres Adapters for List Sharing
+
+## Status
+
+Done
+
+## Commit
+
+a3e9e9b - feat: add postgres list sharing adapter
 
 ## Type
 
@@ -161,6 +193,14 @@ Move Postgres-specific list-sharing persistence behind infrastructure adapters w
 This is infrastructure-only but still attached to the sharing vertical slice. Avoid migrating unrelated list CRUD SQL in this issue.
 
 # Issue 5: Route List Sharing Through Presentation Controllers and Use Cases
+
+## Status
+
+Done
+
+## Commit
+
+9a92ecb - feat: route list sharing through use cases
 
 ## Type
 
@@ -205,6 +245,14 @@ This is the first true tracer bullet: domain policy, application use case, Postg
 
 # Issue 6: Remove Legacy Sharing Code from Lists Repository
 
+## Status
+
+Done
+
+## Commit
+
+59dd13e - refactor: remove legacy list sharing repository code
+
 ## Type
 
 AFK
@@ -241,6 +289,14 @@ Delete the list-sharing responsibilities left behind in `api/src/listsRepository
 This is a cleanup issue intentionally separated from the route migration to keep the pilot PR reviewable.
 
 # Issue 7: Migrate Current Profile Resolution and `/me` Use Cases
+
+## Status
+
+Done
+
+## Commit
+
+bce8d9e - feat: migrate profile use cases
 
 ## Type
 
@@ -282,6 +338,14 @@ This can run after the boundary skeleton without waiting for the list-sharing pi
 
 # Issue 8: Split Auth Verification from Express Middleware
 
+## Status
+
+Done
+
+## Commit
+
+f7153fa - feat: split auth verification use case
+
 ## Type
 
 AFK
@@ -320,6 +384,14 @@ Move Supabase JWT verification and deterministic test identity resolution behind
 Profile resolution and auth verification are coupled today in `api/src/auth.ts`; migrate them together only where necessary to preserve behavior.
 
 # Issue 9: Migrate List Summary and Detail Read Use Cases
+
+## Status
+
+Done
+
+## Commit
+
+4553a10 - feat: migrate list read use cases
 
 ## Type
 
@@ -361,6 +433,14 @@ This issue creates the clean read model before mutating list structure. It shoul
 
 # Issue 10: Migrate List Create, Rename, and Delete Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+bfe342d - feat: migrate list write use cases
+
 ## Type
 
 AFK
@@ -401,6 +481,14 @@ Keep list delete behavior carefully aligned with existing `404` versus `403` exp
 
 # Issue 11: Migrate Section Use Cases with Transaction-Safe Positioning
 
+## Status
+
+Done
+
+## Commit
+
+306d0fc - feat: migrate section use cases
+
 ## Type
 
 AFK
@@ -440,6 +528,14 @@ This issue should keep SQL in infrastructure and not introduce generic ordering 
 
 # Issue 12: Migrate Item and Shopping-State Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+664bc21 - feat: migrate item use cases
+
 ## Type
 
 AFK
@@ -478,6 +574,14 @@ This can run in parallel with section migration if adapter write areas are kept 
 
 # Issue 13: Consolidate Presentation Routes and Composition Root
 
+## Status
+
+Done
+
+## Commit
+
+f263b94 - refactor: consolidate api composition
+
 ## Type
 
 AFK
@@ -515,6 +619,14 @@ Turn Express routes into thin presentation adapters and add a clear composition 
 This issue is mostly consolidation after enough slices have proven the pattern. Do not make it the first PR.
 
 # Issue 14: Retire Legacy Repository-Service Modules
+
+## Status
+
+Done
+
+## Commit
+
+898b8c1 - refactor: retire legacy repository modules
 
 ## Type
 

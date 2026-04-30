@@ -1,46 +1,27 @@
-import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { oneOrNull, pool } from "./db";
+import {
+  resolveCurrentProfileFromCredential,
+  type AuthCredential,
+} from "./application/authUseCases";
+import type { CurrentProfile } from "./domain";
 import { unauthorized } from "./errors";
+import {
+  authVerifier,
+  currentProfileResolver,
+  resetSupabaseAuthClientForTests as resetSupabaseAuthClient,
+} from "./main/auth";
+import { mapCleanError } from "./presentation/http/errorMapper";
 
-export type CurrentProfile = {
-  id: string;
-  supabaseUserId: string;
-  email: string;
-  displayName: string | null;
-};
+export type { CurrentProfile } from "./domain";
 
-type AuthIdentity = {
-  supabaseUserId: string;
-  email: string;
-  displayName?: string;
-};
-
-type ProfileRow = {
-  id: string;
-  supabase_user_id: string;
-  email: string;
-  display_name: string | null;
-};
-
-type SupabaseAuthConfig = {
-  anonKey: string;
-  url: string;
-};
-
-let supabaseAuthClient: SupabaseClient | null = null;
-let supabaseAuthClientConfigKey: string | null = null;
+export function resetSupabaseAuthClientForTests() {
+  resetSupabaseAuthClient();
+}
 
 declare module "express-serve-static-core" {
   interface Request {
     currentProfile?: CurrentProfile;
   }
-}
-
-export function resetSupabaseAuthClientForTests() {
-  supabaseAuthClient = null;
-  supabaseAuthClientConfigKey = null;
 }
 
 export async function resolveAuth(
@@ -49,29 +30,37 @@ export async function resolveAuth(
   next: NextFunction,
 ) {
   try {
-    const identity = await resolveIdentity(request);
+    const currentProfile = await resolveCurrentProfileFromCredential({
+      authVerifier,
+      credential: credentialFromRequest(request),
+      environment: environmentFromProcess(),
+      profileResolver: currentProfileResolver,
+    });
 
-    if (identity) {
-      request.currentProfile = await upsertProfile(identity);
+    if (currentProfile) {
+      request.currentProfile = currentProfile;
     }
 
     next();
   } catch (error) {
-    next(error);
+    next(mapCleanError(error));
   }
 }
 
-async function resolveIdentity(request: Request): Promise<AuthIdentity | null> {
-  const testIdentity = resolveTestIdentity(request);
-
-  if (testIdentity) {
-    return testIdentity;
+function credentialFromRequest(request: Request): AuthCredential {
+  if (hasTestAuthHeaders(request)) {
+    return {
+      type: "test",
+      supabaseUserId: request.header("x-test-auth-user-id") ?? undefined,
+      email: request.header("x-test-auth-email") ?? undefined,
+      displayName: request.header("x-test-auth-display-name") ?? undefined,
+    };
   }
 
   const authorization = request.header("authorization");
 
   if (!authorization) {
-    return null;
+    return { type: "none" };
   }
 
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -80,170 +69,18 @@ async function resolveIdentity(request: Request): Promise<AuthIdentity | null> {
     throw unauthorized("Invalid authorization header.");
   }
 
-  return resolveSupabaseJwt(match[1]);
+  return { type: "bearer", token: match[1] };
 }
 
-function resolveTestIdentity(request: Request): AuthIdentity | null {
-  const userId = request.header("x-test-auth-user-id");
-  const email = request.header("x-test-auth-email");
-
-  if (!userId && !email) {
-    return null;
-  }
-
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.API_ENABLE_TEST_AUTH_BYPASS !== "true"
-  ) {
-    throw unauthorized("Test authentication is disabled.");
-  }
-
-  if (!userId || !email) {
-    throw unauthorized("Test authentication requires user id and email.");
-  }
-
-  return {
-    supabaseUserId: userId,
-    email,
-    displayName: request.header("x-test-auth-display-name") ?? undefined,
-  };
-}
-
-async function resolveSupabaseJwt(token: string): Promise<AuthIdentity> {
-  assertJwtShape(token);
-
-  const config = getSupabaseAuthConfig();
-  const { data, error } = await getVerifiedClaims(token, config);
-
-  if (error || !data?.claims) {
-    throw unauthorized("Invalid access token.");
-  }
-
-  const claims = data.claims as Record<string, unknown>;
-  const issuer = stringClaim(claims.iss);
-  const sub = stringClaim(claims.sub);
-  const email = stringClaim(claims.email);
-
-  if (issuer !== expectedIssuer(config.url)) {
-    throw unauthorized("Invalid access token.");
-  }
-
-  if (!sub || !email) {
-    throw unauthorized("Invalid access token.");
-  }
-
-  return {
-    supabaseUserId: sub,
-    email,
-    displayName: displayNameClaim(claims),
-  };
-}
-
-function assertJwtShape(token: string) {
-  const parts = token.split(".");
-
-  if (parts.length !== 3) {
-    throw unauthorized("Invalid access token.");
-  }
-
-  return parts;
-}
-
-function displayNameClaim(payload: Record<string, unknown>) {
-  const metadata = payload.user_metadata;
-
-  if (!metadata || typeof metadata !== "object") {
-    return undefined;
-  }
-
-  const claims = metadata as Record<string, unknown>;
-  return stringClaim(claims.full_name) ?? stringClaim(claims.name) ?? undefined;
-}
-
-function stringClaim(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function getSupabaseAuthClient(config: SupabaseAuthConfig) {
-  const configKey = `${config.url}:${config.anonKey}`;
-
-  if (supabaseAuthClient && supabaseAuthClientConfigKey === configKey) {
-    return supabaseAuthClient;
-  }
-
-  supabaseAuthClient = createClient(config.url, config.anonKey, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-    },
-  });
-  supabaseAuthClientConfigKey = configKey;
-
-  return supabaseAuthClient;
-}
-
-async function getVerifiedClaims(token: string, config: SupabaseAuthConfig) {
-  try {
-    return await getSupabaseAuthClient(config).auth.getClaims(token);
-  } catch {
-    throw unauthorized("Invalid access token.");
-  }
-}
-
-function getSupabaseAuthConfig(): SupabaseAuthConfig {
-  const url =
-    process.env.SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
-  const anonKey =
-    process.env.SUPABASE_ANON_KEY ??
-    process.env.SUPABASE_PUBLISHABLE_KEY ??
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-    "";
-
-  if (!url || !anonKey) {
-    throw unauthorized("Supabase authentication is not configured.");
-  }
-
-  return {
-    anonKey,
-    url: url.replace(/\/$/, ""),
-  };
-}
-
-function expectedIssuer(supabaseUrl: string) {
-  return `${supabaseUrl}/auth/v1`;
-}
-
-async function upsertProfile(identity: AuthIdentity): Promise<CurrentProfile> {
-  const id = randomUUID();
-  const email = identity.email.trim().toLowerCase();
-  const displayName = identity.displayName?.trim() || null;
-  const profile = oneOrNull(
-    (
-      await pool.query<ProfileRow>(
-        `
-          INSERT INTO profiles (id, supabase_user_id, email, display_name)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (supabase_user_id) DO UPDATE
-          SET
-            email = EXCLUDED.email,
-            display_name = COALESCE(profiles.display_name, EXCLUDED.display_name),
-            updated_at = NOW()
-          RETURNING id, supabase_user_id, email, display_name
-        `,
-        [id, identity.supabaseUserId, email, displayName],
-      )
-    ).rows,
+function hasTestAuthHeaders(request: Request) {
+  return Boolean(
+    request.header("x-test-auth-user-id") || request.header("x-test-auth-email"),
   );
+}
 
-  if (!profile) {
-    throw unauthorized("Unable to resolve current profile.");
-  }
-
+function environmentFromProcess() {
   return {
-    id: profile.id,
-    supabaseUserId: profile.supabase_user_id,
-    email: profile.email,
-    displayName: profile.display_name,
+    allowTestAuthBypass: process.env.API_ENABLE_TEST_AUTH_BYPASS === "true",
+    isProduction: process.env.NODE_ENV === "production",
   };
 }
