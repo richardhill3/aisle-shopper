@@ -34,11 +34,13 @@ export function assertCanManageSharing(access: ListSharingAccess): void {
   }
 }
 
-export function assertCanAddCollaborator({
-  actor,
-  collaborators,
-  targetProfile,
-}: AddCollaboratorPolicyInput): void {
+export function assertCanAddCollaborator(
+  input: AddCollaboratorPolicyInput,
+): asserts input is AddCollaboratorPolicyInput & {
+  targetProfile: CollaboratorProfile;
+} {
+  const { actor, collaborators, targetProfile } = input;
+
   if (!targetProfile) {
     throw notFound("Profile not found.");
   }
