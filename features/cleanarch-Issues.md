@@ -620,6 +620,14 @@ This issue is mostly consolidation after enough slices have proven the pattern. 
 
 # Issue 14: Retire Legacy Repository-Service Modules
 
+## Status
+
+Done
+
+## Commit
+
+898b8c1 - refactor: retire legacy repository modules
+
 ## Type
 
 AFK
