@@ -131,7 +131,11 @@ describe("clean architecture boundaries", () => {
 
   it("keeps auth middleware free of profile persistence SQL", () => {
     const authSource = readFileSync(join(srcRoot, "auth.ts"), "utf8");
-    const forbiddenProfilePersistenceImports = ["./db", "node:crypto"];
+    const forbiddenProfilePersistenceImports = [
+      "./db",
+      "node:crypto",
+      "@supabase/supabase-js",
+    ];
     const violations = importedModules(authSource).filter((moduleName) =>
       forbiddenProfilePersistenceImports.includes(moduleName),
     );
