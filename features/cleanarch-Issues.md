@@ -433,6 +433,14 @@ This issue creates the clean read model before mutating list structure. It shoul
 
 # Issue 10: Migrate List Create, Rename, and Delete Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+bfe342d - feat: migrate list write use cases
+
 ## Type
 
 AFK
