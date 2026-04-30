@@ -101,6 +101,14 @@ This is a pure extraction issue. Do not touch SQL or route wiring except for tes
 
 # Issue 3: Add List Sharing Use Cases with Fake Repository Tests
 
+## Status
+
+Done
+
+## Commit
+
+a7682ce - feat: add list sharing use cases
+
 ## Type
 
 AFK
