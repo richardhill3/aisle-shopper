@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
   ListCapabilities,
-  ListMember,
   ListUserRole,
   ShoppingItem,
   ShoppingList,
@@ -11,7 +10,7 @@ import type {
 import type { Db } from "./db";
 import type { CurrentProfile } from "./auth";
 import { oneOrNull, pool, transaction } from "./db";
-import { forbidden, invalidRequest, notFound, unauthorized } from "./errors";
+import { notFound } from "./errors";
 
 type ListRow = {
   id: string;
@@ -43,13 +42,6 @@ type ItemRow = {
 type ListSummaryRow = ListRow & {
   section_count: string;
   item_count: string;
-};
-
-type ListMemberRow = {
-  id: string;
-  email: string;
-  display_name: string | null;
-  created_at: Date;
 };
 
 function iso(value: Date) {
@@ -113,15 +105,6 @@ function mapSection(row: SectionRow, items: ShoppingItem[]): ShoppingSection {
     items,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
-  };
-}
-
-function mapMember(row: ListMemberRow): ListMember {
-  return {
-    id: row.id,
-    email: row.email,
-    displayName: row.display_name,
-    createdAt: iso(row.created_at),
   };
 }
 
@@ -602,138 +585,6 @@ export async function resetCheckedItems(
   });
 }
 
-export async function listMembers(
-  listId: string,
-  currentProfile?: CurrentProfile,
-) {
-  await requireOwnerAccess(listId, currentProfile);
-
-  const { rows } = await pool.query<ListMemberRow>(
-    `
-      SELECT
-        profiles.id,
-        profiles.email,
-        profiles.display_name,
-        list_memberships.created_at
-      FROM list_memberships
-      INNER JOIN profiles ON profiles.id = list_memberships.profile_id
-      WHERE list_memberships.list_id = $1
-      ORDER BY list_memberships.created_at ASC, profiles.email ASC
-    `,
-    [listId],
-  );
-
-  return rows.map(mapMember);
-}
-
-export async function addListMember(
-  listId: string,
-  email: string,
-  currentProfile?: CurrentProfile,
-) {
-  return transaction(async (client) => {
-    await requireOwnerAccess(listId, currentProfile, client);
-
-    const profile = oneOrNull(
-      (
-        await client.query<{
-          id: string;
-          email: string;
-          display_name: string | null;
-        }>(
-          `
-            SELECT id, email, display_name
-            FROM profiles
-            WHERE email = $1
-          `,
-          [email],
-        )
-      ).rows,
-    );
-
-    if (!profile) {
-      throw invalidRequest("Profile not found.");
-    }
-
-    if (profile.id === currentProfile?.id) {
-      throw invalidRequest("Owner cannot be added as a collaborator.");
-    }
-
-    const existing = oneOrNull(
-      (
-        await client.query(
-          `
-            SELECT profile_id
-            FROM list_memberships
-            WHERE list_id = $1 AND profile_id = $2
-          `,
-          [listId, profile.id],
-        )
-      ).rows,
-    );
-
-    if (existing) {
-      throw invalidRequest("Profile is already a collaborator.");
-    }
-
-    const count = oneOrNull(
-      (
-        await client.query<{ count: string }>(
-          `
-            SELECT COUNT(*) AS count
-            FROM list_memberships
-            WHERE list_id = $1
-          `,
-          [listId],
-        )
-      ).rows,
-    );
-
-    if (Number(count?.count ?? 0) >= 5) {
-      throw invalidRequest("Lists can have at most 5 collaborators.");
-    }
-
-    const member = oneOrNull(
-      (
-        await client.query<ListMemberRow>(
-          `
-            INSERT INTO list_memberships (list_id, profile_id)
-            VALUES ($1, $2)
-            RETURNING
-              $2::text AS id,
-              $3::text AS email,
-              $4::text AS display_name,
-              created_at
-          `,
-          [listId, profile.id, profile.email, profile.display_name],
-        )
-      ).rows,
-    );
-
-    if (!member) {
-      throw invalidRequest("Unable to add collaborator.");
-    }
-
-    return mapMember(member);
-  });
-}
-
-export async function removeListMember(
-  listId: string,
-  profileId: string,
-  currentProfile?: CurrentProfile,
-) {
-  await requireOwnerAccess(listId, currentProfile);
-
-  await pool.query(
-    `
-      DELETE FROM list_memberships
-      WHERE list_id = $1 AND profile_id = $2
-    `,
-    [listId, profileId],
-  );
-}
-
 async function requireSection(
   db: Db,
   listId: string,
@@ -757,33 +608,6 @@ async function requireSection(
 
   if (!section) {
     throw notFound("Section not found.");
-  }
-}
-
-async function requireOwnerAccess(
-  listId: string,
-  currentProfile?: CurrentProfile,
-  db: Db = pool,
-) {
-  if (!currentProfile) {
-    throw unauthorized("Authentication is required.");
-  }
-
-  const list = oneOrNull(
-    (
-      await db.query(
-        `
-          SELECT id
-          FROM lists
-          WHERE id = $1 AND owner_profile_id = $2
-        `,
-        [listId, currentProfile.id],
-      )
-    ).rows,
-  );
-
-  if (!list) {
-    throw forbidden("Owner access is required.");
   }
 }
 

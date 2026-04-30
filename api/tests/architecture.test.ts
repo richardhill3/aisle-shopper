@@ -108,4 +108,18 @@ describe("clean architecture boundaries", () => {
 
     expect(violations).toEqual([]);
   });
+
+  it("keeps legacy list repository free of migrated sharing exports", () => {
+    const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
+    const forbiddenLegacySharingExports = [
+      "export async function addListMember",
+      "export async function listMembers",
+      "export async function removeListMember",
+    ];
+    const violations = forbiddenLegacySharingExports.filter((exportSignature) =>
+      repositorySource.includes(exportSignature),
+    );
+
+    expect(violations).toEqual([]);
+  });
 });
