@@ -481,6 +481,14 @@ Keep list delete behavior carefully aligned with existing `404` versus `403` exp
 
 # Issue 11: Migrate Section Use Cases with Transaction-Safe Positioning
 
+## Status
+
+Done
+
+## Commit
+
+306d0fc - feat: migrate section use cases
+
 ## Type
 
 AFK
