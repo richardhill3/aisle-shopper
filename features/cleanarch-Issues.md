@@ -574,6 +574,14 @@ This can run in parallel with section migration if adapter write areas are kept 
 
 # Issue 13: Consolidate Presentation Routes and Composition Root
 
+## Status
+
+Done
+
+## Commit
+
+f263b94 - refactor: consolidate api composition
+
 ## Type
 
 AFK
