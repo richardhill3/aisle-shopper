@@ -385,6 +385,14 @@ Profile resolution and auth verification are coupled today in `api/src/auth.ts`;
 
 # Issue 9: Migrate List Summary and Detail Read Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+4553a10 - feat: migrate list read use cases
+
 ## Type
 
 AFK
