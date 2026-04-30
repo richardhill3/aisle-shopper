@@ -183,48 +183,17 @@ describe("clean architecture boundaries", () => {
     expect(violations).toEqual([]);
   });
 
-  it("keeps legacy list repository free of migrated sharing exports", () => {
-    const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
-    const forbiddenLegacySharingExports = [
-      "export async function addListMember",
-      "export async function listMembers",
-      "export async function removeListMember",
+  it("retires legacy repository-service modules after clean migration", () => {
+    const retiredModules = [
+      "listsRepository.ts",
+      "profilesRepository.ts",
     ];
-    const violations = forbiddenLegacySharingExports.filter((exportSignature) =>
-      repositorySource.includes(exportSignature),
+
+    const existingModules = retiredModules.filter((moduleName) =>
+      existsSync(join(srcRoot, moduleName)),
     );
 
-    expect(violations).toEqual([]);
-  });
-
-  it("keeps legacy list repository free of migrated section exports", () => {
-    const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
-    const forbiddenLegacySectionExports = [
-      "export async function addSection",
-      "export async function updateSection",
-      "export async function deleteSection",
-      "export async function moveSection",
-    ];
-    const violations = forbiddenLegacySectionExports.filter((exportSignature) =>
-      repositorySource.includes(exportSignature),
-    );
-
-    expect(violations).toEqual([]);
-  });
-
-  it("keeps legacy list repository free of migrated item exports", () => {
-    const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
-    const forbiddenLegacyItemExports = [
-      "export async function addItem",
-      "export async function updateItem",
-      "export async function deleteItem",
-      "export async function resetCheckedItems",
-    ];
-    const violations = forbiddenLegacyItemExports.filter((exportSignature) =>
-      repositorySource.includes(exportSignature),
-    );
-
-    expect(violations).toEqual([]);
+    expect(existingModules).toEqual([]);
   });
 
   it("keeps migrated profile routes off the legacy profile repository", () => {
