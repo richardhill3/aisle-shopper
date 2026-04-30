@@ -15,22 +15,20 @@ import {
   deleteItem,
   deleteList,
   deleteSection,
-  getList,
-  listSummaries,
   moveSection,
   resetCheckedItems,
   updateItem,
   updateList,
   updateSection,
 } from "./listsRepository";
-import { invalidRequest, notFound } from "./errors";
+import { invalidRequest } from "./errors";
+import { listReadController } from "./main/listRead";
 import { listSharingController } from "./main/listSharing";
 import { profileController } from "./main/profile";
 import {
   booleanValue,
   direction,
   optionalName,
-  paging,
   requiredName,
 } from "./validation";
 
@@ -49,26 +47,11 @@ apiRouter.patch("/me", async (request, response, next) => {
 });
 
 apiRouter.get("/lists/recent", async (request, response, next) => {
-  try {
-    const limit = paging(request.query.limit, 3, 50);
-    response.json({
-      lists: await listSummaries(limit, 0, request.currentProfile),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await listReadController.listRecent(request, response, next);
 });
 
 apiRouter.get("/lists", async (request, response, next) => {
-  try {
-    const limit = paging(request.query.limit, 50, 100);
-    const offset = paging(request.query.offset, 0, Number.MAX_SAFE_INTEGER);
-    response.json({
-      lists: await listSummaries(limit, offset, request.currentProfile),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await listReadController.listSummaries(request, response, next);
 });
 
 apiRouter.post("/lists", async (request, response, next) => {
@@ -93,21 +76,7 @@ apiRouter.delete(
 );
 
 apiRouter.get("/lists/:listId", async (request, response, next) => {
-  try {
-    const list = await getList(
-      request.params.listId,
-      undefined,
-      request.currentProfile,
-    );
-
-    if (!list) {
-      throw notFound("List not found.");
-    }
-
-    response.json({ list });
-  } catch (error) {
-    next(error);
-  }
+  await listReadController.getList(request, response, next);
 });
 
 apiRouter.patch("/lists/:listId", async (request, response, next) => {
