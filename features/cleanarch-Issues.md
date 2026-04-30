@@ -290,6 +290,14 @@ This is a cleanup issue intentionally separated from the route migration to keep
 
 # Issue 7: Migrate Current Profile Resolution and `/me` Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+bce8d9e - feat: migrate profile use cases
+
 ## Type
 
 AFK
