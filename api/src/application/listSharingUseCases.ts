@@ -12,6 +12,9 @@ export type ListMemberRecord = CollaboratorProfile & {
 };
 
 export type ListSharingRepository = {
+  transaction<T>(
+    callback: (repository: ListSharingRepository) => Promise<T>,
+  ): Promise<T>;
   getAccess(
     listId: string,
     actorProfileId: string,
@@ -49,6 +52,22 @@ export async function listMembers({
 }
 
 export async function addListMember({
+  actor,
+  email,
+  listId,
+  repository,
+}: AddListMemberInput): Promise<ListMemberRecord> {
+  return repository.transaction((transactionalRepository) =>
+    addListMemberInRepository({
+      actor,
+      email,
+      listId,
+      repository: transactionalRepository,
+    }),
+  );
+}
+
+async function addListMemberInRepository({
   actor,
   email,
   listId,

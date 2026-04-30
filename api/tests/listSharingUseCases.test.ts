@@ -14,6 +14,14 @@ class FakeListSharingRepository implements ListSharingRepository {
   profiles = new Map<string, ListMemberRecord>();
   members = new Map<string, ListMemberRecord[]>();
   removed: Array<{ listId: string; profileId: string }> = [];
+  transactionCount = 0;
+
+  async transaction<T>(
+    callback: (repository: ListSharingRepository) => Promise<T>,
+  ): Promise<T> {
+    this.transactionCount += 1;
+    return callback(this);
+  }
 
   async getAccess(_listId: string, actorProfileId: string) {
     return { role: this.access.get(actorProfileId) ?? "guest" };
@@ -80,6 +88,7 @@ describe("list sharing use cases", () => {
     await expect(listMembers({ actor: owner, listId, repository })).resolves.toEqual([
       collaborator,
     ]);
+    expect(repository.transactionCount).toBe(1);
   });
 
   it("removes collaborators for owners", async () => {
