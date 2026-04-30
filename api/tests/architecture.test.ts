@@ -125,6 +125,22 @@ describe("clean architecture boundaries", () => {
     expect(violations).toEqual([]);
   });
 
+  it("keeps migrated top-level list write routes off the legacy list repository", () => {
+    const routesSource = readFileSync(join(srcRoot, "routes.ts"), "utf8");
+    const legacyRepositoryImport =
+      routesSource.match(/import\s+\{(?<imports>[\s\S]*?)\}\s+from\s+["']\.\/listsRepository["']/)
+        ?.groups?.imports ?? "";
+    const forbiddenLegacyWriteImports = ["createList", "updateList", "deleteList"];
+    const violations = forbiddenLegacyWriteImports.filter((exportName) =>
+      legacyRepositoryImport
+        .split(",")
+        .map((importName) => importName.trim())
+        .includes(exportName),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
   it("keeps legacy list repository free of migrated sharing exports", () => {
     const repositorySource = readFileSync(join(srcRoot, "listsRepository.ts"), "utf8");
     const forbiddenLegacySharingExports = [

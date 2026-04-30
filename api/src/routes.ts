@@ -1,29 +1,25 @@
 import { Router } from "express";
 import type {
   CreateItemRequest,
-  CreateListRequest,
   CreateSectionRequest,
   MoveSectionRequest,
   UpdateItemRequest,
-  UpdateListRequest,
   UpdateSectionRequest,
 } from "../../shared/src";
 import {
   addItem,
   addSection,
-  createList,
   deleteItem,
-  deleteList,
   deleteSection,
   moveSection,
   resetCheckedItems,
   updateItem,
-  updateList,
   updateSection,
 } from "./listsRepository";
 import { invalidRequest } from "./errors";
 import { listReadController } from "./main/listRead";
 import { listSharingController } from "./main/listSharing";
+import { listWriteController } from "./main/listWrite";
 import { profileController } from "./main/profile";
 import {
   booleanValue,
@@ -55,15 +51,7 @@ apiRouter.get("/lists", async (request, response, next) => {
 });
 
 apiRouter.post("/lists", async (request, response, next) => {
-  try {
-    const body = request.body as Partial<CreateListRequest>;
-    const name = requiredName(body.name, "List name");
-    response.status(201).json({
-      list: await createList(name, request.currentProfile),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await listWriteController.createList(request, response, next);
 });
 
 apiRouter.get("/lists/:listId/members", listSharingController.listMembers);
@@ -80,24 +68,11 @@ apiRouter.get("/lists/:listId", async (request, response, next) => {
 });
 
 apiRouter.patch("/lists/:listId", async (request, response, next) => {
-  try {
-    const body = request.body as Partial<UpdateListRequest>;
-    const name = requiredName(body.name, "List name");
-    response.json({
-      list: await updateList(request.params.listId, name, request.currentProfile),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await listWriteController.updateList(request, response, next);
 });
 
 apiRouter.delete("/lists/:listId", async (request, response, next) => {
-  try {
-    await deleteList(request.params.listId, request.currentProfile);
-    response.status(204).send();
-  } catch (error) {
-    next(error);
-  }
+  await listWriteController.deleteList(request, response, next);
 });
 
 apiRouter.post("/lists/:listId/sections", async (request, response, next) => {

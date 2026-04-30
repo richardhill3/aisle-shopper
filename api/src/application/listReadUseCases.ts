@@ -91,7 +91,7 @@ export async function listSummaries({
   const actorProfileId = actor?.profileId ?? null;
   const records = await repository.listSummaries(limit, offset, actorProfileId);
 
-  return records.map((record) => mapSummary(record, actorProfileId));
+  return records.map((record) => mapListSummaryRecord(record, actorProfileId));
 }
 
 export async function recentListSummaries({
@@ -110,10 +110,10 @@ export async function getList({
   const actorProfileId = actor?.profileId ?? null;
   const record = await repository.getList(listId, actorProfileId);
 
-  return record ? mapList(record, actorProfileId) : null;
+  return record ? mapListRecord(record, actorProfileId) : null;
 }
 
-function mapSummary(
+export function mapListSummaryRecord(
   record: ListSummaryRecord,
   actorProfileId: string | null,
 ): ListSummaryView {
@@ -127,7 +127,10 @@ function mapSummary(
   };
 }
 
-function mapList(record: ListRecord, actorProfileId: string | null): ListView {
+export function mapListRecord(
+  record: ListRecord,
+  actorProfileId: string | null,
+): ListView {
   const { access, ...list } = record;
   const currentUserRole = listRoleForAccess(access, actorProfileId);
 
