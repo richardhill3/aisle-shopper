@@ -7,8 +7,6 @@ import {
   type HttpError,
 } from "../../errors";
 
-type CleanError = ApplicationError | DomainError;
-
 export function mapListSharingError(error: unknown): unknown {
   if (error instanceof ApplicationError || error instanceof DomainError) {
     return mapCleanError(error);
@@ -17,7 +15,11 @@ export function mapListSharingError(error: unknown): unknown {
   return error;
 }
 
-function mapCleanError(error: CleanError): HttpError {
+export function mapCleanError(error: unknown): unknown {
+  if (!(error instanceof ApplicationError || error instanceof DomainError)) {
+    return error;
+  }
+
   switch (error.code) {
     case "unauthorized":
       return unauthorized(error.message);

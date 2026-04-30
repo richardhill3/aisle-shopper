@@ -6,7 +6,6 @@ import type {
   MoveSectionRequest,
   UpdateItemRequest,
   UpdateListRequest,
-  UpdateProfileRequest,
   UpdateSectionRequest,
 } from "../../shared/src";
 import {
@@ -24,12 +23,9 @@ import {
   updateList,
   updateSection,
 } from "./listsRepository";
-import { invalidRequest, notFound, unauthorized } from "./errors";
-import {
-  getCurrentProfile,
-  updateCurrentProfile,
-} from "./profilesRepository";
+import { invalidRequest, notFound } from "./errors";
 import { listSharingController } from "./main/listSharing";
+import { profileController } from "./main/profile";
 import {
   booleanValue,
   direction,
@@ -45,31 +41,11 @@ apiRouter.get("/health", (_request, response) => {
 });
 
 apiRouter.get("/me", async (request, response, next) => {
-  try {
-    response.json({
-      profile: await getCurrentProfile(request.currentProfile),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await profileController.getCurrentProfile(request, response, next);
 });
 
 apiRouter.patch("/me", async (request, response, next) => {
-  try {
-    if (!request.currentProfile) {
-      throw unauthorized("Authentication is required.");
-    }
-
-    const body = request.body as Partial<UpdateProfileRequest>;
-    response.json({
-      profile: await updateCurrentProfile(
-        displayName(body.displayName),
-        request.currentProfile,
-      ),
-    });
-  } catch (error) {
-    next(error);
-  }
+  await profileController.updateCurrentProfile(request, response, next);
 });
 
 apiRouter.get("/lists/recent", async (request, response, next) => {
@@ -203,19 +179,6 @@ apiRouter.delete(
     }
   },
 );
-
-function displayName(value: unknown) {
-  if (value === null) {
-    return null;
-  }
-
-  if (typeof value !== "string") {
-    throw invalidRequest("Display name is required.");
-  }
-
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-}
 
 apiRouter.patch(
   "/lists/:listId/sections/:sectionId/position",

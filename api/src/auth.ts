@@ -1,27 +1,15 @@
-import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { oneOrNull, pool } from "./db";
+import type { CurrentProfile } from "./domain";
 import { unauthorized } from "./errors";
+import { resolveCurrentProfile } from "./main/profile";
 
-export type CurrentProfile = {
-  id: string;
-  supabaseUserId: string;
-  email: string;
-  displayName: string | null;
-};
+export type { CurrentProfile } from "./domain";
 
 type AuthIdentity = {
   supabaseUserId: string;
   email: string;
   displayName?: string;
-};
-
-type ProfileRow = {
-  id: string;
-  supabase_user_id: string;
-  email: string;
-  display_name: string | null;
 };
 
 type SupabaseAuthConfig = {
@@ -52,7 +40,7 @@ export async function resolveAuth(
     const identity = await resolveIdentity(request);
 
     if (identity) {
-      request.currentProfile = await upsertProfile(identity);
+      request.currentProfile = await resolveCurrentProfile(identity);
     }
 
     next();
@@ -212,38 +200,4 @@ function getSupabaseAuthConfig(): SupabaseAuthConfig {
 
 function expectedIssuer(supabaseUrl: string) {
   return `${supabaseUrl}/auth/v1`;
-}
-
-async function upsertProfile(identity: AuthIdentity): Promise<CurrentProfile> {
-  const id = randomUUID();
-  const email = identity.email.trim().toLowerCase();
-  const displayName = identity.displayName?.trim() || null;
-  const profile = oneOrNull(
-    (
-      await pool.query<ProfileRow>(
-        `
-          INSERT INTO profiles (id, supabase_user_id, email, display_name)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (supabase_user_id) DO UPDATE
-          SET
-            email = EXCLUDED.email,
-            display_name = COALESCE(profiles.display_name, EXCLUDED.display_name),
-            updated_at = NOW()
-          RETURNING id, supabase_user_id, email, display_name
-        `,
-        [id, identity.supabaseUserId, email, displayName],
-      )
-    ).rows,
-  );
-
-  if (!profile) {
-    throw unauthorized("Unable to resolve current profile.");
-  }
-
-  return {
-    id: profile.id,
-    supabaseUserId: profile.supabase_user_id,
-    email: profile.email,
-    displayName: profile.display_name,
-  };
 }

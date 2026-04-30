@@ -122,4 +122,21 @@ describe("clean architecture boundaries", () => {
 
     expect(violations).toEqual([]);
   });
+
+  it("keeps migrated profile routes off the legacy profile repository", () => {
+    const routesSource = readFileSync(join(srcRoot, "routes.ts"), "utf8");
+
+    expect(routesSource).not.toContain("./profilesRepository");
+  });
+
+  it("keeps auth middleware free of profile persistence SQL", () => {
+    const authSource = readFileSync(join(srcRoot, "auth.ts"), "utf8");
+    const forbiddenProfilePersistenceImports = ["./db", "node:crypto"];
+    const violations = importedModules(authSource).filter((moduleName) =>
+      forbiddenProfilePersistenceImports.includes(moduleName),
+    );
+
+    expect(violations).toEqual([]);
+    expect(authSource).not.toContain("INSERT INTO profiles");
+  });
 });
