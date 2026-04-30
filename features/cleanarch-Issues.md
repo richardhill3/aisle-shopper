@@ -245,6 +245,14 @@ This is the first true tracer bullet: domain policy, application use case, Postg
 
 # Issue 6: Remove Legacy Sharing Code from Lists Repository
 
+## Status
+
+Done
+
+## Commit
+
+59dd13e - refactor: remove legacy list sharing repository code
+
 ## Type
 
 AFK
