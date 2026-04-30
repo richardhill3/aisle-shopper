@@ -194,6 +194,14 @@ This is infrastructure-only but still attached to the sharing vertical slice. Av
 
 # Issue 5: Route List Sharing Through Presentation Controllers and Use Cases
 
+## Status
+
+Done
+
+## Commit
+
+9a92ecb - feat: route list sharing through use cases
+
 ## Type
 
 AFK
